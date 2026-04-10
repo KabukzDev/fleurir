@@ -1,5 +1,7 @@
 import Image from "next/image";
 
+// Add authentication verification in order to hide the buttons that give access to the main website. After signing up, show again.
+
 export default function Navbar() {
   return (
     <nav>
