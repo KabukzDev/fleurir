@@ -1,8 +1,19 @@
 import Image from "next/image";
+import { getUser } from "@/lib/auth";
 
 // Add authentication verification in order to hide the buttons that give access to the main website. After signing up, show again.
 
-export default function Navbar() {
+type NavbarProps = {
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    image: string;
+    role: string;
+  } | null;
+};
+
+export default function Navbar({ user }: NavbarProps) {
   return (
     <nav>
       <div className="w-full flex items-center justify-between px-6 py-4 backdrop-blur-xl bg-mist-950">
@@ -20,6 +31,13 @@ export default function Navbar() {
           <a className="text-white hover:text-flower-blue hover:cursor-pointer transition">
             Support
           </a>
+          {user ? (
+            <img className="h-10 rounded-full" src={user.image} />
+          ) : (
+            <a className="rounded-md px-6 py-1 bg-flower-blue text-white hover:cursor-pointer transition">
+              Login
+            </a>
+          )}
         </div>
       </div>
     </nav>

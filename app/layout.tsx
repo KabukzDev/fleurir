@@ -1,6 +1,8 @@
 import '@/app/ui/global.css'
 import { inter } from '@/app/ui/fonts'
 import type { Metadata } from 'next'
+import { getUser } from "@/lib/auth";
+import Navbar from './components/navbar';
 
 export const metadata: Metadata = {
   title: {
@@ -9,11 +11,15 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({children,}: {children: React.ReactNode;}) {
+export default async function RootLayout({children,}: {children: React.ReactNode;}) {
+  const user = await getUser();
   return (
     <html lang="en">
       <body className={`${inter.className} antialiased`}>
-        {children}
+        <div className="min-h-screen bg-mist-950">
+          <Navbar user={user} />
+          {children}
+        </div>
       </body>
     </html>
   );
