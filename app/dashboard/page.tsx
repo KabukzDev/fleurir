@@ -15,9 +15,9 @@ export default async function Dashboard() {
     }
 
     const recentActivities = [
-        { id: '1', userImage: 'https://i.pravatar.cc/150?u=lyuk', userName: 'Lyuk', subject: 'French', points: 5, type: 'gave' as const },
-        { id: '2', userImage: 'https://i.pravatar.cc/150?u=sarah', userName: 'Sarah', subject: 'Quantum Physics', points: 15, type: 'gave' as const },
-        { id: '3', userImage: 'https://i.pravatar.cc/150?u=arjun', userName: 'Arjun', subject: 'Biology', points: 10, type: 'received' as const },
+        { id: '1', userImage: '/testing/lyuk.png', userName: 'Lyuk', subject: 'French', points: 5, type: 'gave' as const },
+        { id: '2', userImage: '/testing/sarah.png', userName: 'Sarah', subject: 'Quantum Physics', points: 15, type: 'gave' as const },
+        { id: '3', userImage: '/testing/arjun.png', userName: 'Arjun', subject: 'Biology', points: 10, type: 'received' as const },
     ];
 
     const communities = [
