@@ -34,7 +34,7 @@ export default async function Dashboard() {
                     What's up, {user.name}
                 </h1>
                 <p className="text-white pb-4">
-                    You’re currently <span className="font-bold">257</span> points away from <a className="underline font-bold" href="site">Einstein’s League</a>
+                    You’re currently <span className="font-bold">257</span> points away from <a className="underline font-bold" href="/leagues">Einstein’s League</a>
                 </p>
                 <div className="bg-[linear-gradient(rgba(0,0,0,0.5),rgba(0,0,0,0.5)),url(https://blog.sothebysrealty.co.uk/hs-fs/hubfs/Imported_Blog_Media/Best%20Places%20to%20Live%20in%20France-jpg.jpg?width=1600&height=1068&name=Best%20Places%20to%20Live%20in%20France-jpg.jpg)] bg-cover bg-center h-40 w-120 rounded-2xl p-4 cursor-pointer transition-transform hover:scale-[1.02]">
                     <div className="flex items-start justify-between gap-4">

@@ -9,7 +9,7 @@ export default function CommunityCard({ icon, title, memberCount, bgImage }: Com
   return (
     <a href={`/temporary_redirect`}>
     <div 
-      className="relative h-60 rounded-2xl p-4 bg-cover bg-center overflow-hidden flex flex-col justify-between group cursor-pointer transition-transform hover:scale-[1.02]"
+      className="relative h-auto rounded-2xl p-4 bg-cover bg-center overflow-hidden flex flex-col justify-between group cursor-pointer transition-transform hover:scale-[1.02]"
       style={{ 
         backgroundImage: `linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url(${bgImage})` 
       }}

@@ -1,5 +1,5 @@
 export async function getUser() {
-  const isLoggedIn = true; // ← flip this like a light switch 💡
+  const isLoggedIn = false; // ← flip this like a light switch 💡
 
   if (!isLoggedIn) return null;
 
