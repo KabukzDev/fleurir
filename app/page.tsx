@@ -7,7 +7,7 @@ export default async function Home() {
   const user = await getUser();
 
   if (user) {
-    redirect("/home")
+    redirect("/dashboard")
   }
 
   return (

@@ -22,6 +22,11 @@ export default async function RootLayout({children,}: {children: React.ReactNode
         <div className="min-h-screen bg-mist-950">
           <Navbar user={user} />
           {children}
+          <footer>
+            <p className="text-white/50 text-xs text-center py-6">
+              This is a demonstration. The final version of the product may include additional features and improvements.
+            </p>
+          </footer>
         </div>
       </body>
     </html>

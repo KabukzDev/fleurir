@@ -36,9 +36,9 @@ const ActivityProfile: React.FC<UserProfileProps> = ({ userImage, activities }) 
             {/* Text Bubble */}
             <div className="bg-[#1e1e1e] border border-white/10 px-4 py-2 rounded-xl text-white text-sm">
               {item.type === 'gave' ? (
-                <span>You helped <a className="underline" href={`/profile/${item.userName}`}>{item.userName}</a> with <a className="underline" href={`/community/${item.subject}`}>{item.subject}</a></span>
+                <span>You helped <a className="underline" href={`/profile/${item.userName.toLowerCase()}`}>{item.userName}</a> with <a className="underline" href={`/communities/${item.subject.toLowerCase().trim().replace(/\s+/g, "+")}`}>{item.subject}</a></span>
               ) : (
-                <span><a className="underline" href={`/profile/${item.userName}`}>{item.userName}</a> helped you on <a className="underline" href={`/community/${item.subject}`}>{item.subject}</a></span>
+                <span><a className="underline" href={`/profile/${item.userName.toLowerCase()}`}>{item.userName}</a> helped you on <a className="underline" href={`/communities/${item.subject.toLowerCase().trim().replace(/\s+/g, "+")}`}>{item.subject}</a></span>
               )}
             </div>
 

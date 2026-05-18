@@ -1,18 +1,16 @@
 interface CommunityCardProps {
     icon: string;
     title: string;
-    memberCount: number;
+    memberCount: number | string;
     bgImage: string;
+    link: string;
 }
 
-export default function CommunityCard({ icon, title, memberCount, bgImage }: CommunityCardProps) {
+export default function CommunityCard({ icon, title, memberCount, bgImage, link }: CommunityCardProps) {
   return (
-    <a href={`/temporary_redirect`}>
+    <a href={link}>
     <div 
-      className="relative h-auto rounded-2xl p-4 bg-cover bg-center overflow-hidden flex flex-col justify-between group cursor-pointer transition-transform hover:scale-[1.02]"
-      style={{ 
-        backgroundImage: `linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url(${bgImage})` 
-      }}
+      className="relative h-auto rounded-2xl p-4 bg-white/4 bg-center overflow-hidden flex flex-col justify-between group cursor-pointer transition-transform hover:scale-[1.02]"
     >
         <div className="flex items-center justify-between gap-4 z-10">
             <div className="text-white">
