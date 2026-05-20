@@ -1,139 +1,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import Card from "@/app/components/card";
-import { profile } from "console";
+import communitiesData from "@/data/communities.json";
 
 type CommunityPageProps = {
-  params: { slug: string };
-};
-
-const communitiesData = { 
-  french: {
-    symbol: "🇫🇷", 
-    name: "French", 
-    banner: "/testing/french-banner.jpg",
-    manager: "fleurir",
-    members: {
-      total: 52,
-      online: 12,
-    },
-    profile: {
-      points: 120,
-      contributions: 10,
-    }
-  }, 
-  chemistry: { 
-    symbol: "🧪", 
-    name: "Chemistry", 
-    banner: "/testing/chemistry-banner.jpg", 
-    members: {
-      total: 43,
-      online: 8,
-    },
-    manager: "fleurir",
-    profile: {
-      points: 80,
-      contributions: 5,
-    }
-  }, 
-  javascript: { 
-    symbol: "💻", 
-    name: "Javascript", 
-    banner: "/testing/javascript-banner.jpg", 
-    members: {
-      total: 50,
-      online: 15,
-    },
-    manager: "fleurir", 
-    profile: {
-      points: 200,
-      contributions: 25,
-    }
-  }, 
-  german: { 
-    symbol: "🇩🇪", 
-    name: "German", 
-    banner: "/testing/german-banner.jpg", 
-    members: {
-      total: 36,
-      online: 10,
-    },
-    manager: "fleurir", 
-    profile: {
-      points: 60,
-      contributions: 8,
-    }
-  }, 
-  quantum_physics: { 
-    symbol: "⚛️", 
-    name: "Quantum Physics", 
-    banner: "/testing/quantum-physics-banner.jpg", 
-    members: {
-      total: 45,
-      online: 12,
-    },
-    manager: "fleurir",
-    profile: {
-      points: 150,
-      contributions: 18,
-    }
-  }, 
-  algebra: { 
-    symbol: "🧮", 
-    name: "Algebra", 
-    banner: "/testing/algebra-banner.jpg", 
-    members: {
-      total: 34,
-      online: 7,
-    },
-    manager: "fleurir", 
-    profile: {
-      points: 90,
-      contributions: 12,
-    }
-  }, 
-  veterinary_medicine: { 
-    symbol: "🏥", 
-    name: "Veterinary Medicine", 
-    banner: "/testing/veterinary-medicine-banner.jpg", 
-    members: {
-      total: 45,
-      online: 12,
-    },
-    manager: "fleurir", 
-    profile: {
-      points: 110,
-      contributions: 15,
-    }
-  }, 
-  medicine: { 
-    symbol: "⚕️", 
-    name: "Medicine", 
-    banner: "/testing/medicine-banner.jpg", 
-    members: {
-      total: 23,
-      online: 5,
-    },
-    manager: "fleurir", 
-    profile: {
-      points: 130,
-      contributions: 20,
-    }
-  }, 
-  philosophy: { 
-    symbol: "💭", 
-    name: "Philosophy", 
-    banner: "/testing/philosophy-banner.jpg", 
-    members: {
-      total: 37,
-      online: 9,
-    },
-    manager: "fleurir", 
-    profile: {
-      points: 70,
-      contributions: 9,
-    }
-  } 
+  params: Promise<{ slug: string }>;
 };
 
 export default async function CommunityPage({
@@ -177,12 +48,12 @@ export default async function CommunityPage({
           </h2>
 
           <div className="space-y-2">
-            {Object.entries(communitiesData).map(([slug, item]) => (
+            {Object.entries(communitiesData).map(([communitySlug, item]) => (
               <Link
-                key={slug}
-                href={`/communities/${slug}`}
+                key={communitySlug}
+                href={`/communities/${communitySlug}`}
                 className={`flex justify-between items-center px-3 py-2 rounded-xl transition ${
-                  slug === params.slug
+                  communitySlug === slug
                     ? "bg-white/10"
                     : "hover:bg-white/5"
                 }`}
@@ -217,23 +88,21 @@ export default async function CommunityPage({
               <div>
                 <h1 className="text-6xl font-light">{community.name}</h1>
                 <p className="text-white/60">
-                  Managed by{" "}
-                  <Link
-                    className="underline font-bold"
-                    href={`/profile/${community.manager}`}
-                  >
-                    @{community.manager}
-                  </Link>
+                  Managed by @{community.manager}
                 </p>
               </div>
 
               <div className="flex items-center gap-3">
-                <button className="bg-flower-blue hover:bg-flower-blue/85 px-4 py-1 rounded-lg">
+                <Link
+                  href={`/communities/${slug}`}
+                  className="bg-flower-blue hover:bg-flower-blue/85 px-4 py-1 rounded-lg"
+                >
                   Joined
-                </button>
+                </Link>
 
-                <div className="bg-mist-950/60 rounded-lg px-3 py-2">
-                  {community.members.total}
+                <div className="bg-black/60 backdrop-blur-sm rounded-lg px-2 py-2 text-center flex items-center gap-1">
+                    <span className="text-white icon icon-rounded icon-filled icon-24">group</span>
+                    <p className="text-white leading-none tracking-tight text-xl">{community.members.total}</p>
                 </div>
               </div>
             </div>
@@ -267,12 +136,18 @@ export default async function CommunityPage({
                   </div>
                 </div>
                 <div className="flex flex-col justify-center items-end gap-4 w-full">
-                  <button className="w-fit px-5 border border-white/20 rounded-xl py-2 hover:bg-white/5">
+                  <Link
+                    href={`/communities/${slug}/forum/ask?type=question`}
+                    className="w-fit px-5 border border-white/20 rounded-xl py-2 hover:bg-white/5 cursor-pointer"
+                  >
                     Start contribution
-                  </button>
-                  <button className="w-fit px-5 border border-white/20 rounded-xl py-2 hover:bg-white/5">
+                  </Link>
+                  <Link
+                    href={`/communities/${slug}/forum/ask?type=discussion`}
+                    className="w-fit px-5 border border-white/20 rounded-xl py-2 hover:bg-white/5 cursor-pointer"
+                  >
                     Start discussion
-                  </button>
+                  </Link>
                 </div>
               </div>
             </div>

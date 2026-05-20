@@ -1,0 +1,283 @@
+{
+  "currentLeagueId": "gold-freud",
+  "season": {
+    "name": "Seasonal Leagues",
+    "endsIn": "12 days",
+    "userProgressLabel": "257 points away from Einstein's League"
+  },
+  "leagues": [
+    {
+      "id": "gold-fleurir",
+      "tier": "Gold",
+      "name": "Fleurir",
+      "threshold": "0.1%",
+      "accent": "#f1c75b",
+      "banner": "/testing/community-banner.jpg"
+    },
+    {
+      "id": "silver-fleurir",
+      "tier": "Silver",
+      "name": "Fleurir",
+      "threshold": "0.5%",
+      "accent": "#d6dbe4",
+      "banner": "/testing/community-banner.jpg"
+    },
+    {
+      "id": "bronze-fleurir",
+      "tier": "Bronze",
+      "name": "Fleurir",
+      "threshold": "1%",
+      "accent": "#c18b5d",
+      "banner": "/testing/community-banner.jpg"
+    },
+    {
+      "id": "gold-einstein",
+      "tier": "Gold",
+      "name": "Einstein",
+      "threshold": "5%",
+      "accent": "#f1c75b",
+      "banner": "/testing/quantum-physics-banner.jpg"
+    },
+    {
+      "id": "silver-einstein",
+      "tier": "Silver",
+      "name": "Einstein",
+      "threshold": "10%",
+      "accent": "#d6dbe4",
+      "banner": "/testing/quantum-physics-banner.jpg"
+    },
+    {
+      "id": "bronze-einstein",
+      "tier": "Bronze",
+      "name": "Einstein",
+      "threshold": "20%",
+      "accent": "#c18b5d",
+      "banner": "/testing/quantum-physics-banner.jpg"
+    },
+    {
+      "id": "gold-freud",
+      "tier": "Gold",
+      "name": "Freud",
+      "threshold": "40%",
+      "accent": "#f1c75b",
+      "banner": "/testing/philosophy-banner.jpg"
+    },
+    {
+      "id": "silver-freud",
+      "tier": "Silver",
+      "name": "Freud",
+      "threshold": "70%",
+      "accent": "#d6dbe4",
+      "banner": "/testing/philosophy-banner.jpg"
+    },
+    {
+      "id": "bronze-freud",
+      "tier": "Bronze",
+      "name": "Freud",
+      "threshold": "90%",
+      "accent": "#c18b5d",
+      "banner": "/testing/philosophy-banner.jpg"
+    }
+  ],
+  "leaderboards": {
+    "gold-freud": [
+      {
+        "username": "sarah",
+        "displayName": "Sarah Sandler",
+        "score": 1200,
+        "collaborations": 50
+      },
+      {
+        "username": "lyuk",
+        "displayName": "Lyuk Smirnov",
+        "score": 1185,
+        "collaborations": 45
+      },
+      {
+        "username": "arjun",
+        "displayName": "Arjun Sharma",
+        "image": "/testing/arjun.png",
+        "score": 1020,
+        "collaborations": 43
+      },
+      {
+        "username": "anna",
+        "displayName": "Anna Rodriguez",
+        "score": 920,
+        "collaborations": 38
+      },
+      {
+        "username": "maya",
+        "displayName": "Maya Chen",
+        "score": 875,
+        "collaborations": 35
+      },
+      {
+        "username": "lucas",
+        "displayName": "Lucas Lockhart",
+        "score": 840,
+        "collaborations": 31
+      }
+    ],
+    "silver-freud": [
+      {
+        "username": "anna",
+        "displayName": "Anna Rodriguez",
+        "score": 920,
+        "collaborations": 38
+      },
+      {
+        "username": "lucas",
+        "displayName": "Lucas Lockhart",
+        "score": 810,
+        "collaborations": 30
+      },
+      {
+        "username": "camille",
+        "displayName": "Camille Moreau",
+        "score": 790,
+        "collaborations": 28
+      }
+    ],
+    "bronze-freud": [
+      {
+        "username": "pablo",
+        "displayName": "Pablo Reyes",
+        "score": 690,
+        "collaborations": 24
+      },
+      {
+        "username": "anna",
+        "displayName": "Anna Rodriguez",
+        "score": 660,
+        "collaborations": 22
+      },
+      {
+        "username": "noah",
+        "displayName": "Noah Bennett",
+        "score": 610,
+        "collaborations": 21
+      }
+    ],
+    "gold-einstein": [
+      {
+        "username": "omar",
+        "displayName": "Omar Haddad",
+        "score": 1320,
+        "collaborations": 54
+      },
+      {
+        "username": "maya",
+        "displayName": "Maya Chen",
+        "score": 1250,
+        "collaborations": 49
+      },
+      {
+        "username": "anna",
+        "displayName": "Anna Rodriguez",
+        "score": 920,
+        "collaborations": 38
+      }
+    ],
+    "silver-einstein": [
+      {
+        "username": "diego",
+        "displayName": "Diego Alvarez",
+        "score": 930,
+        "collaborations": 34
+      },
+      {
+        "username": "anna",
+        "displayName": "Anna Rodriguez",
+        "score": 875,
+        "collaborations": 32
+      },
+      {
+        "username": "noah",
+        "displayName": "Noah Bennett",
+        "score": 820,
+        "collaborations": 29
+      }
+    ],
+    "bronze-einstein": [
+      {
+        "username": "lyuk",
+        "displayName": "Lyuk Kim",
+        "score": 760,
+        "collaborations": 27
+      },
+      {
+        "username": "pablo",
+        "displayName": "Pablo Reyes",
+        "score": 710,
+        "collaborations": 25
+      },
+      {
+        "username": "anna",
+        "displayName": "Anna Rodriguez",
+        "score": 690,
+        "collaborations": 23
+      }
+    ],
+    "gold-fleurir": [
+      {
+        "username": "fleurir",
+        "displayName": "Fleurir",
+        "score": 1800,
+        "collaborations": 70
+      },
+      {
+        "username": "anna",
+        "displayName": "Anna Rodriguez",
+        "score": 920,
+        "collaborations": 38
+      },
+      {
+        "username": "elise",
+        "displayName": "Elise Weber",
+        "score": 880,
+        "collaborations": 36
+      }
+    ],
+    "silver-fleurir": [
+      {
+        "username": "anna",
+        "displayName": "Anna Rodriguez",
+        "score": 820,
+        "collaborations": 31
+      },
+      {
+        "username": "sarah",
+        "displayName": "Sarah Miller",
+        "score": 800,
+        "collaborations": 29
+      },
+      {
+        "username": "marie",
+        "displayName": "Marie Dubois",
+        "score": 740,
+        "collaborations": 26
+      }
+    ],
+    "bronze-fleurir": [
+      {
+        "username": "lucas",
+        "displayName": "Lucas Lockhart",
+        "score": 650,
+        "collaborations": 24
+      },
+      {
+        "username": "anna",
+        "displayName": "Anna Rodriguez",
+        "score": 620,
+        "collaborations": 21
+      },
+      {
+        "username": "camille",
+        "displayName": "Camille Moreau",
+        "score": 590,
+        "collaborations": 20
+      }
+    ]
+  }
+}

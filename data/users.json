@@ -1,0 +1,156 @@
+{
+  "fleurir": {
+    "image": "/testing/fleurir.png",
+    "name": "Fleurir",
+    "email": "admin@gofleurir.com",
+    "role": "administrator",
+    "bio": "Community steward for the Fleurir demo spaces.",
+    "location": "Remote",
+    "points": 980,
+    "joinedAt": "2026-01-10",
+    "interests": ["community building", "learning design", "mentorship"]
+  },
+  "anna": {
+    "image": "/testing/anna_test.png",
+    "name": "Anna Rodriguez",
+    "email": "anna@gofleurir.com",
+    "role": "mentor",
+    "bio": "Language learner who likes practical grammar explanations and study systems.",
+    "location": "Medellin, Colombia",
+    "points": 420,
+    "joinedAt": "2026-02-03",
+    "interests": ["French", "German", "medicine", "philosophy"]
+  },
+  "arjun": {
+    "image": "/testing/arjun.png",
+    "name": "Arjun Sharma",
+    "email": "arjun@gofleurir.com",
+    "role": "member",
+    "bio": "Careful collaborator who moves between science threads and study-planning discussions.",
+    "location": "Mumbai, India",
+    "points": 360,
+    "joinedAt": "2026-02-19",
+    "interests": ["biology", "medicine", "chemistry", "quantum physics"]
+  },
+  "camille": {
+    "image": "/testing/camille.jpg",
+    "name": "Camille Moreau",
+    "email": "camille@gofleurir.com",
+    "role": "member",
+    "bio": "Explains abstract topics with diagrams, examples, and patient follow-up questions.",
+    "location": "Lyon, France",
+    "points": 275,
+    "joinedAt": "2026-02-18",
+    "interests": ["algebra", "philosophy", "chemistry"]
+  },
+  "diego": {
+    "image": "/testing/diego.jpg",
+    "name": "Diego Alvarez",
+    "email": "diego@gofleurir.com",
+    "role": "member",
+    "bio": "Science student who likes turning messy workflows into checklists.",
+    "location": "Bogota, Colombia",
+    "points": 310,
+    "joinedAt": "2026-03-01",
+    "interests": ["chemistry", "quantum physics", "medicine"]
+  },
+  "elise": {
+    "image": "/testing/elise.jpg",
+    "name": "Elise Weber",
+    "email": "elise@gofleurir.com",
+    "role": "mentor",
+    "bio": "German and veterinary medicine contributor focused on clear fundamentals.",
+    "location": "Hamburg, Germany",
+    "points": 365,
+    "joinedAt": "2026-02-12",
+    "interests": ["German", "veterinary medicine", "medicine"]
+  },
+  "lucas": {
+    "image": "/testing/lucas.jpg",
+    "name": "Lucas Lockhart",
+    "email": "lucas@gofleurir.com",
+    "role": "member",
+    "bio": "Builds small projects to understand programming and explains concepts with examples.",
+    "location": "Austin, USA",
+    "points": 390,
+    "joinedAt": "2026-01-28",
+    "interests": ["JavaScript", "French", "philosophy", "chemistry"]
+  },
+  "lyuk": {
+    "image": "/testing/lyuk.png",
+    "name": "Lyuk Kim",
+    "email": "lyuk@gofleurir.com",
+    "role": "member",
+    "bio": "Curious learner who asks precise questions and tests advice quickly.",
+    "location": "Philadelphia, USA",
+    "points": 335,
+    "joinedAt": "2026-02-07",
+    "interests": ["French", "German", "JavaScript", "algebra"]
+  },
+  "marie": {
+    "image": "/testing/marie.jpg",
+    "name": "Marie Dubois",
+    "email": "marie@gofleurir.com",
+    "role": "mentor",
+    "bio": "French pronunciation helper with a soft spot for repeatable speaking routines.",
+    "location": "Quebec City, Canada",
+    "points": 288,
+    "joinedAt": "2026-03-09",
+    "interests": ["French", "German", "pronunciation"]
+  },
+  "maya": {
+    "image": "/testing/maya.jpg",
+    "name": "Maya Chen",
+    "email": "maya@gofleurir.com",
+    "role": "member",
+    "bio": "Connects theory to everyday examples across science and medicine.",
+    "location": "Vancouver, Canada",
+    "points": 402,
+    "joinedAt": "2026-01-31",
+    "interests": ["quantum physics", "medicine", "chemistry"]
+  },
+  "noah": {
+    "image": "/testing/noah.jpg",
+    "name": "Noah Seo-jun",
+    "email": "noah@gofleurir.com",
+    "role": "member",
+    "bio": "Study-habits enthusiast who likes tables, spaced practice, and clean notes.",
+    "location": "Seoul, South Korea",
+    "points": 298,
+    "joinedAt": "2026-02-22",
+    "interests": ["algebra", "medicine", "German", "JavaScript"]
+  },
+  "omar": {
+    "image": "/testing/omar.jpg",
+    "name": "Omar Haddad",
+    "email": "omar@gofleurir.com",
+    "role": "mentor",
+    "bio": "Physics mentor who prefers careful language over flashy analogies.",
+    "location": "Amman, Jordan",
+    "points": 450,
+    "joinedAt": "2026-01-20",
+    "interests": ["quantum physics", "chemistry", "philosophy"]
+  },
+  "pablo": {
+    "image": "/testing/pablo.jpg",
+    "name": "Pablo Reyes",
+    "email": "pablo@gofleurir.com",
+    "role": "member",
+    "bio": "Asks beginner-friendly questions and turns answers into practice routines.",
+    "location": "Lima, Peru",
+    "points": 322,
+    "joinedAt": "2026-02-15",
+    "interests": ["French", "JavaScript", "algebra", "veterinary medicine"]
+  },
+  "sarah": {
+    "image": "/testing/sarah.png",
+    "name": "Sarah Miller",
+    "email": "sarah@gofleurir.com",
+    "role": "member",
+    "bio": "Discussion starter who keeps threads practical, kind, and grounded.",
+    "location": "London, UK",
+    "points": 348,
+    "joinedAt": "2026-02-05",
+    "interests": ["French", "medicine", "philosophy", "JavaScript"]
+  }
+}

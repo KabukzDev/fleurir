@@ -18,7 +18,7 @@ const ActivityProfile: React.FC<UserProfileProps> = ({ userImage, activities }) 
   const size = 240;
   const radius = 120;
   const circumference = 2 * Math.PI * radius;
-  const progressPercent = 0.65;
+  const progressPercent = 0.9;
   const offset = circumference - progressPercent * circumference;
 
   return (
@@ -28,17 +28,17 @@ const ActivityProfile: React.FC<UserProfileProps> = ({ userImage, activities }) 
           <div 
             key={item.id}
             className={`relative flex items-center gap-2 pointer-events-auto px-5
-              ${index === 0 ? 'bottom-3 left-22' : ''}
+              ${index === 0 ? 'bottom-3 left-14' : ''}
               ${index === 1 ? '' : ''}
-              ${index === 2 ? 'top-3 left-22' : ''}
+              ${index === 2 ? 'top-3 left-20' : ''}
             `}
           >
             {/* Text Bubble */}
             <div className="bg-[#1e1e1e] border border-white/10 px-4 py-2 rounded-xl text-white text-sm">
               {item.type === 'gave' ? (
-                <span>You helped <a className="underline" href={`/profile/${item.userName.toLowerCase()}`}>{item.userName}</a> with <a className="underline" href={`/communities/${item.subject.toLowerCase().trim().replace(/\s+/g, "+")}`}>{item.subject}</a></span>
+                <span>You helped <a className="underline" href={`/profile/${item.userName.toLowerCase()}`}>{item.userName}</a> with <a className="underline" href={`/communities/${item.subject.toLowerCase().trim().replace(/\s+/g, "_")}`}>{item.subject}</a></span>
               ) : (
-                <span><a className="underline" href={`/profile/${item.userName.toLowerCase()}`}>{item.userName}</a> helped you on <a className="underline" href={`/communities/${item.subject.toLowerCase().trim().replace(/\s+/g, "+")}`}>{item.subject}</a></span>
+                <span><a className="underline" href={`/profile/${item.userName.toLowerCase()}`}>{item.userName}</a> helped you on <a className="underline" href={`/communities/${item.subject.toLowerCase().trim().replace(/\s+/g, "_")}`}>{item.subject}</a></span>
               )}
             </div>
 

@@ -28,7 +28,7 @@ export default function Navbar({ user }: NavbarProps) {
           {user ? (
             <>
             {/* <a className="text-white hover:text-flower-blue transition" href="/">Home</a> */}
-            {/* <a className="text-white hover:text-flower-blue transition" href="/discover">Discover</a> */}
+            <a className="text-white hover:text-flower-blue transition" href="/discover">Discover</a>
             <a className="text-white hover:text-flower-blue transition" href="/dashboard">Dashboard</a>
             <a className="text-white hover:text-flower-blue transition" href="/leagues">Leagues</a>
             <a className="text-white hover:text-flower-blue transition" href="/support">Support</a>
