@@ -153,7 +153,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
               </div>
               <div className="rounded-2xl bg-mist-950/60 px-4 py-3">
                 <p className="text-white/45">Location</p>
-                <p className="truncate">{profile.location}</p>
+                <p className="wrap">{profile.location}</p>
               </div>
             </div>
           </div>
