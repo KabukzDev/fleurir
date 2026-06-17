@@ -1,7 +1,10 @@
 import Activity from "@/app/components/activity"
 import Card from "@/app/components/card"
-import communitiesData from "@/data/communities.json";
-import { getAnnaCollaborations, getAnnaFriends } from "@/lib/demo-social";
+import {
+    getAllCommunities,
+    getAnnaCollaborations,
+    getAnnaFriends,
+} from "@/lib/demo-social";
 import { getUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
 
@@ -16,8 +19,12 @@ export default async function Dashboard() {
     redirect("/login");
     }
 
-    const friends = getAnnaFriends();
-    const collaborations = getAnnaCollaborations();
+    const [communities, friends, collaborations] = await Promise.all([
+        getAllCommunities(),
+        getAnnaFriends(),
+        getAnnaCollaborations(),
+    ]);
+    const french = communities.find((community) => community.slug === "french");
 
     const recentActivities = [
         { id: '1', userImage: '/testing/lucas.jpg', userName: 'Lucas', subject: 'Chemistry', points: 21, type: 'gave' as const },
@@ -26,7 +33,7 @@ export default async function Dashboard() {
     ];
 
     const buttons = [
-        { id: 1, icon:"diversity_3", title: "My communities", members: Object.keys(communitiesData).length, img: "...", link: "/communities" },
+        { id: 1, icon:"diversity_3", title: "My communities", members: communities.length, img: "...", link: "/communities" },
         { id: 2, icon:"group", title: "My friends", members: friends.length, img: "...", link: "/friends" },
         { id: 3, icon:"person_raised_hand", title: "My collaborations", members: collaborations.length, img: "...", link: "/collaborations" },
     ];
@@ -49,7 +56,7 @@ export default async function Dashboard() {
                                 <p className="leading-none tracking-tight font-medium text-2xl">French</p>
                             </div>
                             <div className="bg-black/60 rounded-lg px-2 py-2 text-center">
-                                <p className="text-white leading-none tracking-tight text-xl flex items-center justify-center gap-1"><span className="icon icon-rounded icon-filled icon-24">forum</span>{communitiesData.french.members.online}</p>
+                                <p className="text-white leading-none tracking-tight text-xl flex items-center justify-center gap-1"><span className="icon icon-rounded icon-filled icon-24">forum</span>{french?.members.online || 0}</p>
                             </div>
                         </div>
                     </div>

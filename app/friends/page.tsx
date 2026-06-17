@@ -6,8 +6,8 @@ export const metadata = {
   title: "Friends",
 };
 
-export default function FriendsPage() {
-  const friends = getAnnaFriends();
+export default async function FriendsPage() {
+  const friends = await getAnnaFriends();
 
   return (
     <main className="min-h-screen text-white px-6 py-6">

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 import type { ForumPost } from "../forum-client";
 
 type Reply = {
@@ -25,85 +25,44 @@ type PostClientProps = {
   initialPost: ForumPost | null;
 };
 
-const demoPostsKey = (slug: string) => `fleurir-demo-posts:${slug}`;
-const demoCommentsKey = (slug: string, postId: string) =>
-  `fleurir-demo-comments:${slug}:${postId}`;
-
 export default function PostClient({
   slug,
   postId,
   initialPost,
 }: PostClientProps) {
-  const [demoPost, setDemoPost] = useState<ForumPost | null>(null);
   const [demoComments, setDemoComments] = useState<Comment[]>([]);
   const [reply, setReply] = useState("");
-  const [loadedDemoState, setLoadedDemoState] = useState(false);
-
-  useEffect(() => {
-    const savedPosts = window.localStorage.getItem(demoPostsKey(slug));
-    const savedComments = window.localStorage.getItem(
-      demoCommentsKey(slug, postId)
-    );
-
-    if (savedPosts) {
-      try {
-        const posts: ForumPost[] = JSON.parse(savedPosts);
-        setDemoPost(posts.find((post) => post.id === postId) || null);
-      } catch {
-        setDemoPost(null);
-      }
-    }
-
-    if (savedComments) {
-      try {
-        setDemoComments(JSON.parse(savedComments));
-      } catch {
-        setDemoComments([]);
-      }
-    }
-
-    setLoadedDemoState(true);
-  }, [postId, slug]);
-
-  const post = demoPost || initialPost;
+  const [error, setError] = useState("");
+  const post = initialPost;
 
   const comments = useMemo(
     () => [...demoComments, ...(post?.comments || [])],
     [demoComments, post]
   );
 
-  const handleReply = (event: FormEvent<HTMLFormElement>) => {
+  const handleReply = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     if (!reply.trim()) return;
 
-    const nextComment: Comment = {
-      id: `demo-comment-${Date.now()}`,
-      author: "anna",
-      content: reply.trim(),
-      upvotes: 0,
-      accepted: false,
-      replies: [],
-    };
+    const response = await fetch("/api/comments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ postId, content: reply.trim() }),
+    });
+    const data = await response.json();
+
+    if (!response.ok) {
+      setError(data.error || "Could not post reply.");
+      return;
+    }
+
+    const nextComment: Comment = data.comment;
     const nextComments = [nextComment, ...demoComments];
 
     setDemoComments(nextComments);
     setReply("");
-    window.localStorage.setItem(
-      demoCommentsKey(slug, postId),
-      JSON.stringify(nextComments)
-    );
   };
-
-  if (!post && !loadedDemoState) {
-    return (
-      <main className="min-h-screen text-white p-10">
-        <div className="max-w-3xl mx-auto text-white/50">
-          Loading demo post...
-        </div>
-      </main>
-    );
-  }
 
   if (!post) {
     return (
@@ -189,6 +148,7 @@ export default function PostClient({
           />
 
           <div className="flex justify-end mt-4">
+            {error && <p className="mr-auto text-red-300">{error}</p>}
             <button className="bg-flower-blue hover:bg-flower-blue/90 px-5 py-2 rounded-xl">
               {post.type === "question" ? "Post Answer" : "Post Reply"}
             </button>

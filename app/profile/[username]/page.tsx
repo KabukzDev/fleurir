@@ -1,10 +1,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import postsData from "@/data/posts.json";
 import {
   getAllUsers,
   getUserContributionStats,
+  getUserCollaborations,
   getUserProfile,
 } from "@/lib/demo-social";
 
@@ -24,12 +24,14 @@ type ActivityItem = {
 };
 
 export async function generateStaticParams() {
-  return Object.keys(getAllUsers()).map((username) => ({ username }));
+  const users = await getAllUsers();
+
+  return users.map((user) => ({ username: user.username }));
 }
 
 export async function generateMetadata({ params }: ProfilePageProps) {
   const { username } = await params;
-  const profile = getUserProfile(username);
+  const profile = await getUserProfile(username);
 
   return {
     title: profile ? profile.name : "Profile",
@@ -38,67 +40,29 @@ export async function generateMetadata({ params }: ProfilePageProps) {
 
 export default async function ProfilePage({ params }: ProfilePageProps) {
   const { username } = await params;
-  const profile = getUserProfile(username);
+  const profile = await getUserProfile(username);
 
   if (!profile) notFound();
 
-  const stats = getUserContributionStats(username);
-  const recentActivity: ActivityItem[] = [];
-
-  for (const [communitySlug, posts] of Object.entries(postsData.communities)) {
-    for (const post of posts) {
-      if (post.author === username) {
-        recentActivity.push({
-          id: `${communitySlug}-${post.id}-post`,
-          communitySlug,
-          communityName:
-            stats.communities.find((community) => community.slug === communitySlug)
-              ?.name || communitySlug,
-          postId: post.id,
-          title: post.title,
-          action: "Started a thread",
-          points: post.upvotes,
-          solved: post.solved,
-        });
-      }
-
-      for (const comment of post.comments || []) {
-        if (comment.author === username) {
-          recentActivity.push({
-            id: `${communitySlug}-${post.id}-comment-${comment.id}`,
-            communitySlug,
-            communityName:
-              stats.communities.find((community) => community.slug === communitySlug)
-                ?.name || communitySlug,
-            postId: post.id,
-            title: post.title,
-            action: comment.accepted ? "Posted accepted answer" : "Joined a thread",
-            points: comment.upvotes,
-            solved: post.solved,
-          });
-        }
-
-        for (const reply of comment.replies || []) {
-          if (reply.author === username) {
-            recentActivity.push({
-              id: `${communitySlug}-${post.id}-reply-${reply.id}`,
-              communitySlug,
-              communityName:
-                stats.communities.find((community) => community.slug === communitySlug)
-                  ?.name || communitySlug,
-              postId: post.id,
-              title: post.title,
-              action: "Replied in conversation",
-              points: 2,
-              solved: post.solved,
-            });
-          }
-        }
-      }
-    }
-  }
-
-  recentActivity.sort((a, b) => b.points - a.points);
+  const [stats, collaborations] = await Promise.all([
+    getUserContributionStats(username),
+    getUserCollaborations(username),
+  ]);
+  const recentActivity: ActivityItem[] = collaborations.map((collaboration) => ({
+    id: collaboration.id,
+    communitySlug: collaboration.communitySlug,
+    communityName: collaboration.communityName,
+    postId: collaboration.postId,
+    title: collaboration.postTitle,
+    action:
+      collaboration.action === "asked"
+        ? "Started a thread"
+        : collaboration.action === "answered"
+          ? "Joined a thread"
+          : "Replied in conversation",
+    points: collaboration.points,
+    solved: collaboration.solved,
+  }));
 
   return (
     <main className="min-h-screen text-white px-6 py-6">

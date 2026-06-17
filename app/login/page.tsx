@@ -1,184 +1,116 @@
-"use client"; // Required for form handling/buttons
+"use client";
 
-import { useState } from "react";
-import Link from "next/link";
+import { FormEvent, useState } from "react";
+import { useRouter } from "next/navigation";
 
 type Mode = "login" | "signup";
 
 export default function Login() {
+  const router = useRouter();
   const [mode, setMode] = useState<Mode>("login");
-
   const [form, setForm] = useState({
     username: "",
+    name: "",
     email: "",
     password: "",
-    confirmPassword: "",
   });
-
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setForm((current) => ({
+      ...current,
+      [event.target.name]: event.target.value,
+    }));
+  };
 
-    const res = await fetch("/api/login", {
+  const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError("");
+    setSuccess("");
+
+    const response = await fetch("/api/login", {
       method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         email: form.email,
         password: form.password,
       }),
     });
+    const data = await response.json();
 
-    if (res.ok) {
-      alert("Logged in!");
-    } else {
-      alert("Invalid credentials");
-    }
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setForm({
-      ...form,
-      [e.target.name]: e.target.value,
-    });
-  };
-
-  const validateUsername = (username: string) => {
-    return /^[a-z0-9_]{3,20}$/.test(username);
-  };
-
-  const handleSignup = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!validateUsername(form.username)) {
-      setError(
-        "Username must be 3-20 characters, lowercase only, and can contain numbers or underscores."
-      );
+    if (!response.ok) {
+      setError(data.error || "Invalid credentials.");
       return;
     }
 
-    const res = await fetch("/api/signup", {
-      method: "POST",
-      body: JSON.stringify(form),
-    });
-
-    if (res.ok) {
-      setSuccess("Account created successfully!");
-      // add an email verification step here later on
-      setMode("login");
-    } else {
-      setError("Something went wrong.");
-    }
+    router.push("/dashboard");
+    router.refresh();
   };
 
-// export default function Login() {
-//   const handleLogin = (e: React.FormEvent) => {
-//     e.preventDefault();
-//     // Logic for auth goes here
-//     console.log("Logging in...");
-//   };
+  const handleSignup = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setError("");
+    setSuccess("");
+
+    const response = await fetch("/api/signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(form),
+    });
+    const data = await response.json();
+
+    if (!response.ok) {
+      setError(data.error || "Could not create account.");
+      return;
+    }
+
+    setSuccess("Account created.");
+    router.push("/dashboard");
+    router.refresh();
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center p-6">
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-125 h-125 rounded-full" />
       <div className="relative w-full max-w-100 bg-mist-950/50 backdrop-blur-2xl border border-white/10 p-8 rounded-3xl shadow-2xl">
-        {/* Logo Section */}
         <div className="flex flex-col items-center mb-8">
           <img className="h-10 mb-2" src="/fleurir/logo_x1.png" alt="Fleurir Logo" />
           <h1 className="text-white text-2xl font-light tracking-tight">
-            {mode === "login"
-            ? "Welcome back"
-            : mode === "signup"
-            ? "Create account"
-            : "Tell us your name"}
+            {mode === "login" ? "Welcome back" : "Create account"}
           </h1>
           <p className="text-white/50 text-sm">
             {mode === "login"
-            ? "Log in to your account"
-            : mode === "signup"
-            ? "Begin your journey with us"
-            : "Tell us your name"}
+              ? "Log in to your account"
+              : "Begin your journey with us"}
           </p>
         </div>
 
-        {mode === "login" && (
-        <form onSubmit={handleLogin} className="space-y-4">
-          <div>
-            <label className="block text-white/70 text-xs font-medium mb-1.5 ml-1 uppercase tracking-wider">
-              Email Address
-            </label>
-            <input 
-              type="email" 
-              placeholder="name@example.com"
-              onChange={handleChange}
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-flower-blue/50 transition"
-              required
-            />
+        {error && (
+          <div className="mb-4 bg-red-500/15 border border-red-400/30 text-red-200 px-4 py-3 rounded-xl">
+            {error}
           </div>
-
-          <div>
-            <label className="block text-white/70 text-xs font-medium mb-1.5 ml-1 uppercase tracking-wider">
-              Password
-            </label>
-            <input 
-              type="password" 
-              placeholder="••••••••"
-              onChange={handleChange}
-              className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-flower-blue/50 transition"
-              required
-            />
-          </div>
-
-          <button type="submit" className="cursor-pointer w-full bg-flower-blue hover:bg-flower-blue/90 text-white font-medium py-3 rounded-xl transition-all active:scale-[0.98] mt-2">
-            Log In
-          </button>
-
-          <div className="mt-8 flex flex-col items-center gap-4">
-          <div className="flex items-center gap-2 w-full">
-            <div className="h-px bg-white/10 grow" />
-            <span className="text-white/30 text-xs uppercase tracking-widest">or</span>
-            <div className="h-px bg-white/10 grow" />
-          </div>
-
-          <button className="cursor-pointer   w-full bg-white text-black font-medium py-3 rounded-xl flex items-center justify-center gap-2 hover:bg-white/90 transition">
-            {/* You'd put a Google SVG icon here */}
-            Continue with Google
-          </button>
-
-          <p className="text-sm text-white/60 cursor-pointer" onClick={() => setMode("signup")}>
-              Don't have an account?
-          </p>
-        </div>
-        </form>
         )}
 
-        {mode === "signup" && (
-          <form onSubmit={handleSignup} className="space-y-4">
-            <div>
-              <label className="block text-white/70 text-xs font-medium mb-1.5 ml-1 uppercase tracking-wider">
-                Username
-              </label>
-              <div className="fixed top-5 right-5 bg-red-500 text-white px-4 py-3 rounded-xl shadow-xl">
-                {error}
-              </div>
-              <input 
-                type="text"
-                placeholder="@username"
-                onChange={handleChange}
-                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-flower-blue/50 transition"
-                required
-              />
-            </div>
+        {success && (
+          <div className="mb-4 bg-green-500/15 border border-green-400/30 text-green-200 px-4 py-3 rounded-xl">
+            {success}
+          </div>
+        )}
+
+        {mode === "login" ? (
+          <form onSubmit={handleLogin} className="space-y-4">
             <div>
               <label className="block text-white/70 text-xs font-medium mb-1.5 ml-1 uppercase tracking-wider">
                 Email Address
               </label>
-              <input 
-                type="email" 
-                value="demo@gofleurir.com"
+              <input
+                type="email"
+                name="email"
+                value={form.email}
+                placeholder="name@example.com"
                 onChange={handleChange}
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-flower-blue/50 transition"
-                disabled
+                required
               />
             </div>
 
@@ -186,17 +118,101 @@ export default function Login() {
               <label className="block text-white/70 text-xs font-medium mb-1.5 ml-1 uppercase tracking-wider">
                 Password
               </label>
-              <input 
-                type="password" 
-                placeholder="••••••••"
+              <input
+                type="password"
+                name="password"
+                value={form.password}
+                placeholder="Password"
                 onChange={handleChange}
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-flower-blue/50 transition"
                 required
               />
             </div>
 
-            <button type="submit" className="cursor-pointer w-full bg-flower-blue hover:bg-flower-blue/90 text-white font-medium py-3 rounded-xl transition-all active:scale-[0.98] mt-2">
-              Continue
+            <button className="cursor-pointer w-full bg-flower-blue hover:bg-flower-blue/90 text-white font-medium py-3 rounded-xl transition-all active:scale-[0.98] mt-2">
+              Log In
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setMode("signup")}
+              className="w-full text-sm text-white/60 hover:text-white"
+            >
+              Don't have an account?
+            </button>
+          </form>
+        ) : (
+          <form onSubmit={handleSignup} className="space-y-4">
+            <div>
+              <label className="block text-white/70 text-xs font-medium mb-1.5 ml-1 uppercase tracking-wider">
+                Username
+              </label>
+              <input
+                type="text"
+                name="username"
+                value={form.username}
+                placeholder="@username"
+                onChange={handleChange}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-flower-blue/50 transition"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-white/70 text-xs font-medium mb-1.5 ml-1 uppercase tracking-wider">
+                Display Name
+              </label>
+              <input
+                type="text"
+                name="name"
+                value={form.name}
+                placeholder="Anna Rodriguez"
+                onChange={handleChange}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-flower-blue/50 transition"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-white/70 text-xs font-medium mb-1.5 ml-1 uppercase tracking-wider">
+                Email Address
+              </label>
+              <input
+                type="email"
+                name="email"
+                value={form.email}
+                placeholder="name@example.com"
+                onChange={handleChange}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-flower-blue/50 transition"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-white/70 text-xs font-medium mb-1.5 ml-1 uppercase tracking-wider">
+                Password
+              </label>
+              <input
+                type="password"
+                name="password"
+                value={form.password}
+                placeholder="At least 6 characters"
+                onChange={handleChange}
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-flower-blue/50 transition"
+                required
+              />
+            </div>
+
+            <button className="cursor-pointer w-full bg-flower-blue hover:bg-flower-blue/90 text-white font-medium py-3 rounded-xl transition-all active:scale-[0.98] mt-2">
+              Create Account
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setMode("login")}
+              className="w-full text-sm text-white/60 hover:text-white"
+            >
+              Already have an account?
             </button>
           </form>
         )}

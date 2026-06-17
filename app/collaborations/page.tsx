@@ -11,9 +11,11 @@ const actionLabels = {
   replied: "Replied",
 };
 
-export default function CollaborationsPage() {
-  const collaborations = getAnnaCollaborations();
-  const friends = getAnnaFriends();
+export default async function CollaborationsPage() {
+  const [collaborations, friends] = await Promise.all([
+    getAnnaCollaborations(),
+    getAnnaFriends(),
+  ]);
   const totalPoints = collaborations.reduce(
     (total, collaboration) => total + collaboration.points,
     0

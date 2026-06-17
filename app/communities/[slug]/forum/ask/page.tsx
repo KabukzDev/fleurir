@@ -7,9 +7,6 @@ import {
   useRouter,
   useSearchParams,
 } from "next/navigation";
-import type { ForumPost } from "../forum-client";
-
-const demoPostsKey = (slug: string) => `fleurir-demo-posts:${slug}`;
 
 export default function AskPage() {
   const router = useRouter();
@@ -37,44 +34,44 @@ export default function AskPage() {
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    void publishPost();
+  };
 
+  const publishPost = async () => {
     if (!title.trim() || !content.trim()) {
       setError("Add a title and details before publishing.");
       return;
     }
 
-    const saved = window.localStorage.getItem(demoPostsKey(slug));
-    const currentPosts: ForumPost[] = saved ? JSON.parse(saved) : [];
     const parsedTags = tags
       .split(",")
       .map((tag) => tag.trim())
       .filter(Boolean);
 
-    const post: ForumPost = {
-      id: `demo-${Date.now()}`,
-      title: title.trim(),
+    const response = await fetch("/api/posts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        communitySlug: slug,
+        title: title.trim(),
       type,
-      content: content.trim(),
-      author: "anna",
-      upvotes: 0,
-      replies: 0,
-      solved: false,
-      tags:
-        parsedTags.length > 0
-          ? parsedTags
-          : type === "question"
-            ? [difficulty.toLowerCase(), "question"]
-            : ["discussion"],
-      comments: [],
-      createdAt: new Date().toISOString(),
-    };
+        content: content.trim(),
+        tags:
+          parsedTags.length > 0
+            ? parsedTags
+            : type === "question"
+              ? [difficulty.toLowerCase(), "question"]
+              : ["discussion"],
+      }),
+    });
+    const data = await response.json();
 
-    window.localStorage.setItem(
-      demoPostsKey(slug),
-      JSON.stringify([post, ...currentPosts])
-    );
+    if (!response.ok) {
+      setError(data.error || "Could not publish post.");
+      return;
+    }
 
-    router.push(`/communities/${slug}/forum/${post.id}`);
+    router.push(`/communities/${slug}/forum/${data.post.id}`);
   };
 
   return (

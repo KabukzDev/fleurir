@@ -1,6 +1,5 @@
-import communitiesData from "@/data/communities.json";
-import postsData from "@/data/posts.json";
-import ForumClient, { type ForumPost } from "./forum-client";
+import { getCommunity, getForumPosts } from "@/lib/demo-social";
+import ForumClient from "./forum-client";
 
 type ForumProps = {
   params: Promise<{ slug: string }>;
@@ -9,18 +8,16 @@ type ForumProps = {
 export default async function ForumPage({ params }: ForumProps) {
   const { slug } = await params;
 
-  const posts =
-    postsData.communities[
-      slug as keyof typeof postsData.communities
-    ] || [];
+  const [community, posts] = await Promise.all([
+    getCommunity(slug),
+    getForumPosts(slug),
+  ]);
 
   return (
     <ForumClient
       slug={slug}
-      communityName={
-        communitiesData[slug as keyof typeof communitiesData]?.name || slug
-      }
-      initialPosts={posts as ForumPost[]}
+      communityName={community?.name || slug}
+      initialPosts={posts}
     />
   );
 }

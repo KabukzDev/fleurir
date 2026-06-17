@@ -1,10 +1,10 @@
 import Image from "next/image";
 import Link from "next/link";
-import postsData from "@/data/posts.json";
 import {
   getAllCommunities,
   getAllUsers,
   getUserContributionStats,
+  getForumPosts,
 } from "@/lib/demo-social";
 
 type DiscoverPageProps = {
@@ -33,14 +33,15 @@ export const metadata = {
 export default async function DiscoverPage({ searchParams }: DiscoverPageProps) {
   const { q = "", view = "all" } = await searchParams;
   const query = q.trim().toLowerCase();
-  const users = getAllUsers();
-  const communities = getAllCommunities();
+  const [users, communities, allPosts] = await Promise.all([
+    getAllUsers(),
+    getAllCommunities(),
+    getForumPosts(),
+  ]);
 
-  const communityCards = Object.entries(communities)
-    .map(([slug, community]) => {
-      const posts = postsData.communities[
-        slug as keyof typeof postsData.communities
-      ] || [];
+  const communityCards = communities
+    .map((community) => {
+      const posts = allPosts.filter((post) => post.communitySlug === community.slug);
       const tagSet = new Set<string>();
 
       for (const post of posts) {
@@ -48,9 +49,8 @@ export default async function DiscoverPage({ searchParams }: DiscoverPageProps) 
       }
 
       return {
-        slug,
         ...community,
-        description: communityDescriptions[slug] || "A focused learning community on Fleurir.",
+        description: community.description || communityDescriptions[community.slug] || "A focused learning community on Fleurir.",
         posts: posts.length,
         solved: posts.filter((post) => post.solved).length,
         tags: [...tagSet].slice(0, 4),
@@ -67,11 +67,19 @@ export default async function DiscoverPage({ searchParams }: DiscoverPageProps) 
       ].some((value) => value.toLowerCase().includes(query));
     });
 
-  const peopleCards = Object.entries(users)
-    .map(([username, user]) => ({
-      username,
+  const statsByUsername = new Map(
+    await Promise.all(
+      users.map(async (user) => [
+        user.username,
+        await getUserContributionStats(user.username),
+      ] as const)
+    )
+  );
+
+  const peopleCards = users
+    .map((user) => ({
       ...user,
-      stats: getUserContributionStats(username),
+      stats: statsByUsername.get(user.username)!,
     }))
     .filter((user) => {
       if (!query) return true;

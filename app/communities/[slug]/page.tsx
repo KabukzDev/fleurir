@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import Card from "@/app/components/card";
-import communitiesData from "@/data/communities.json";
+import { getAllCommunities, getCommunity } from "@/lib/demo-social";
 
 type CommunityPageProps = {
   params: Promise<{ slug: string }>;
@@ -12,8 +12,10 @@ export default async function CommunityPage({
 }: CommunityPageProps) {
   const { slug } = await params;
 
-  const community =
-    communitiesData[slug as keyof typeof communitiesData];
+  const [community, communities] = await Promise.all([
+    getCommunity(slug),
+    getAllCommunities(),
+  ]);
 
   if (!community) {
     return <div className="text-white p-10">Community not found</div>;
@@ -48,12 +50,12 @@ export default async function CommunityPage({
           </h2>
 
           <div className="space-y-2">
-            {Object.entries(communitiesData).map(([communitySlug, item]) => (
+            {communities.map((item) => (
               <Link
-                key={communitySlug}
-                href={`/communities/${communitySlug}`}
+                key={item.slug}
+                href={`/communities/${item.slug}`}
                 className={`flex justify-between items-center px-3 py-2 rounded-xl transition ${
-                  communitySlug === slug
+                  item.slug === slug
                     ? "bg-white/10"
                     : "hover:bg-white/5"
                 }`}

@@ -1,5 +1,4 @@
-import postsData from "@/data/posts.json";
-import type { ForumPost } from "../forum-client";
+import { getForumPost } from "@/lib/demo-social";
 import PostClient from "./post-client";
 
 type PostPageProps = {
@@ -12,19 +11,13 @@ type PostPageProps = {
 export default async function PostPage({ params }: PostPageProps) {
   const { slug, postId } = await params;
 
-  const communityPosts =
-    postsData.communities[
-      slug as keyof typeof postsData.communities
-    ] || [];
-
-  const post =
-    communityPosts.find((item) => item.id === postId) || null;
+  const post = await getForumPost(slug, postId);
 
   return (
     <PostClient
       slug={slug}
       postId={postId}
-      initialPost={post as ForumPost | null}
+      initialPost={post}
     />
   );
 }

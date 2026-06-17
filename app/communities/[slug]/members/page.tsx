@@ -1,87 +1,21 @@
 import Image from "next/image";
 import Link from "next/link";
-import communitiesData from "@/data/communities.json";
-import postsData from "@/data/posts.json";
-import usersData from "@/data/users.json";
+import { getCommunity, getCommunityMembers } from "@/lib/demo-social";
 
 type MembersPageProps = {
   params: Promise<{ slug: string }>;
 };
 
-type UserProfile = {
-  image: string;
-  name: string;
-  email: string;
-  role: string;
-  bio: string;
-  location: string;
-  points: number;
-  joinedAt: string;
-  interests: string[];
-};
-
-type Member = UserProfile & {
-  username: string;
-  contributions: number;
-  online: boolean;
-};
-
-const users = usersData as Record<string, UserProfile>;
-
 export default async function MembersPage({ params }: MembersPageProps) {
   const { slug } = await params;
-  const community =
-    communitiesData[slug as keyof typeof communitiesData];
-  const posts =
-    postsData.communities[
-      slug as keyof typeof postsData.communities
-    ] || [];
+  const [community, members] = await Promise.all([
+    getCommunity(slug),
+    getCommunityMembers(slug),
+  ]);
 
   if (!community) {
     return <main className="min-h-screen text-white p-10">Community not found</main>;
   }
-
-  const contributionCounts = new Map<string, number>();
-  contributionCounts.set(community.manager, 1);
-
-  for (const post of posts) {
-    contributionCounts.set(
-      post.author,
-      (contributionCounts.get(post.author) || 0) + 2
-    );
-
-    for (const comment of post.comments || []) {
-      contributionCounts.set(
-        comment.author,
-        (contributionCounts.get(comment.author) || 0) + 1
-      );
-
-      for (const reply of comment.replies || []) {
-        contributionCounts.set(
-          reply.author,
-          (contributionCounts.get(reply.author) || 0) + 1
-        );
-      }
-    }
-  }
-
-  const members: Member[] = [...contributionCounts.entries()]
-    .map(([username, contributions], index) => {
-      const profile = users[username] || users.fleurir;
-
-      return {
-        ...profile,
-        username,
-        contributions,
-        online: index % 3 !== 1,
-      };
-    })
-    .sort((a, b) => {
-      if (a.username === community.manager) return -1;
-      if (b.username === community.manager) return 1;
-
-      return b.contributions - a.contributions;
-    });
 
   return (
     <main className="min-h-screen text-white p-4">
@@ -108,9 +42,8 @@ export default async function MembersPage({ params }: MembersPageProps) {
                 {community.name} members
               </h1>
               <p className="text-white/55 mt-2 max-w-2xl">
-                Everyone here has appeared in this community's posts,
-                comments, or replies, so the member list mirrors the demo
-                conversations.
+                Members are derived from this community's manager, post authors,
+                commenters, and reply authors.
               </p>
             </div>
 
@@ -139,7 +72,7 @@ export default async function MembersPage({ params }: MembersPageProps) {
           <div className="bg-white/5 rounded-2xl p-5">
             <p className="text-white/50">Online now</p>
             <p className="text-4xl font-light mt-2">
-              {members.filter((member) => member.online).length}
+              {members.filter((member) => member.isOnline).length}
             </p>
           </div>
           <div className="bg-white/5 rounded-2xl p-5">
@@ -157,24 +90,32 @@ export default async function MembersPage({ params }: MembersPageProps) {
               className="bg-white/5 rounded-2xl p-5 border border-white/5"
             >
               <div className="flex gap-4">
-                <div className="relative h-16 w-16 shrink-0">
+                <Link
+                  href={`/profile/${member.username}`}
+                  className="relative h-16 w-16 shrink-0"
+                >
                   <Image
                     src={member.image}
                     alt={member.name}
                     fill
-                    className="rounded-full object-cover"
+                    className="rounded-2xl object-cover"
                   />
                   <span
                     className={`absolute -right-1 -bottom-1 h-4 w-4 rounded-full border-2 border-mist-950 ${
-                      member.online ? "bg-green-400" : "bg-white/25"
+                      member.isOnline ? "bg-green-400" : "bg-white/25"
                     }`}
                   />
-                </div>
+                </Link>
 
                 <div className="min-w-0 flex-1">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <h2 className="text-xl">{member.name}</h2>
+                      <Link
+                        href={`/profile/${member.username}`}
+                        className="text-xl hover:underline"
+                      >
+                        {member.name}
+                      </Link>
                       <p className="text-white/50">@{member.username}</p>
                     </div>
                     <span className="capitalize text-xs bg-white/5 px-2 py-1 rounded-lg">
@@ -208,7 +149,7 @@ export default async function MembersPage({ params }: MembersPageProps) {
                     </div>
                     <div className="bg-mist-950/60 rounded-xl px-3 py-2">
                       <p className="text-white/45">Status</p>
-                      <p>{member.online ? "Online" : "Away"}</p>
+                      <p>{member.isOnline ? "Online" : "Away"}</p>
                     </div>
                   </div>
                 </div>

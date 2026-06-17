@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 type Reply = {
   id: string | number;
@@ -38,35 +38,19 @@ type ForumClientProps = {
   initialPosts: ForumPost[];
 };
 
-const demoPostsKey = (slug: string) => `fleurir-demo-posts:${slug}`;
-
 export default function ForumClient({
   slug,
   communityName,
   initialPosts,
 }: ForumClientProps) {
-  const [demoPosts, setDemoPosts] = useState<ForumPost[]>([]);
   const [query, setQuery] = useState("");
   const [solvedOnly, setSolvedOnly] = useState(false);
   const [sortMode, setSortMode] = useState<"latest" | "top">("latest");
 
-  useEffect(() => {
-    const saved = window.localStorage.getItem(demoPostsKey(slug));
-
-    if (!saved) return;
-
-    try {
-      setDemoPosts(JSON.parse(saved));
-    } catch {
-      setDemoPosts([]);
-    }
-  }, [slug]);
-
   const posts = useMemo(() => {
-    const merged = [...demoPosts, ...initialPosts];
     const normalizedQuery = query.trim().toLowerCase();
 
-    return merged
+    return initialPosts
       .filter((post) => {
         if (solvedOnly && !post.solved) return false;
         if (!normalizedQuery) return true;
@@ -86,12 +70,12 @@ export default function ForumClient({
 
         return dateB - dateA;
       });
-  }, [demoPosts, initialPosts, query, solvedOnly, sortMode]);
+  }, [initialPosts, query, solvedOnly, sortMode]);
 
   const topCollaborators = useMemo(() => {
     const scores = new Map<string, number>();
 
-    for (const post of [...demoPosts, ...initialPosts]) {
+    for (const post of initialPosts) {
       scores.set(post.author, (scores.get(post.author) || 0) + 2);
 
       for (const comment of post.comments || []) {
@@ -107,7 +91,7 @@ export default function ForumClient({
       .sort((a, b) => b[1] - a[1])
       .slice(0, 3)
       .map(([author]) => author);
-  }, [demoPosts, initialPosts]);
+  }, [initialPosts]);
 
   return (
     <main className="min-h-screen text-white p-4">

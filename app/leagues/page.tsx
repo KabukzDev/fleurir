@@ -1,15 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
-import leaguesData from "@/data/leagues.json";
-import usersData from "@/data/users.json";
+import { getLeaguesData } from "@/lib/demo-social";
 
 type LeaguesPageProps = {
   searchParams: Promise<{ league?: string }>;
-};
-
-type UserProfile = {
-  image: string;
-  name: string;
 };
 
 type League = {
@@ -29,19 +23,18 @@ type LeaderboardEntry = {
   collaborations: number;
 };
 
-const users = usersData as Record<string, UserProfile>;
-const leagues = leaguesData.leagues as League[];
-const leaderboards = leaguesData.leaderboards as Record<
-  string,
-  LeaderboardEntry[]
->;
-
 export const metadata = {
   title: "Leagues",
 };
 
 export default async function LeaguesPage({ searchParams }: LeaguesPageProps) {
   const { league } = await searchParams;
+  const leaguesData = await getLeaguesData();
+  const leagues = leaguesData.leagues as League[];
+  const leaderboards = leaguesData.leaderboards as Record<
+    string,
+    LeaderboardEntry[]
+  >;
   const selectedLeague =
     leagues.find((item) => item.id === league) ||
     leagues.find((item) => item.id === leaguesData.currentLeagueId) ||
@@ -115,8 +108,7 @@ export default async function LeaguesPage({ searchParams }: LeaguesPageProps) {
 
             <div>
               {leaderboard.map((entry, index) => {
-                const profile = users[entry.username];
-                const image = entry.image || profile?.image || "/testing/anna_test.png";
+                const image = entry.image || "/testing/anna_test.png";
 
                 return (
                   <div
