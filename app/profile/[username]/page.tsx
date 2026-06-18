@@ -23,12 +23,6 @@ type ActivityItem = {
   solved: boolean;
 };
 
-export async function generateStaticParams() {
-  const users = await getAllUsers();
-
-  return users.map((user) => ({ username: user.username }));
-}
-
 export async function generateMetadata({ params }: ProfilePageProps) {
   const { username } = await params;
   const profile = await getUserProfile(username);

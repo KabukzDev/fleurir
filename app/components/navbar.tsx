@@ -1,5 +1,4 @@
-import Image from "next/image";
-import { getUser } from "@/lib/auth";
+import LogoutButton from "@/app/components/logout-button";
 
 // Add authentication verification in order to hide the buttons that give access to the main website. After signing up, show again.
 
@@ -41,9 +40,7 @@ export default function Navbar({ user }: NavbarProps) {
                   <div className="h-px bg-white/10 my-2" />
                   <a href={`/profile/${user.id}`} className="block text-white/80 hover:text-white text-xs py-1">My Profile</a>
                   <a href="/settings" className="block text-white/80 hover:text-white text-xs py-1">Settings</a>
-                  <button className="w-full text-left text-red-400 hover:text-red-300 text-xs py-1 mt-2">
-                    Log out
-                  </button>
+                  <LogoutButton />
                 </div>
               </div>
             </div>

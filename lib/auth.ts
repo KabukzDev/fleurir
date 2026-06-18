@@ -18,13 +18,7 @@ export async function getUser() {
     .maybeSingle();
 
   if (!profile) {
-    return {
-      id: user.id,
-      image: "/testing/anna_test.png",
-      name: user.email || "User",
-      email: user.email || "",
-      role: "user",
-    };
+    return null;
   }
 
   return {

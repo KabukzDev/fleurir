@@ -1,12 +1,13 @@
-import Activity from "@/app/components/activity"
-import Card from "@/app/components/card"
 import {
     getAllCommunities,
-    getAnnaCollaborations,
-    getAnnaFriends,
+    getUserCollaborations,
+    getUserFriends,
+    getUserLeagueHighlight,
 } from "@/lib/demo-social";
 import { getUser } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import Activity from "@/app/components/activity";
+import Card from "@/app/components/card";
 
 export const metadata = {
   title: "Dashboard",
@@ -19,10 +20,11 @@ export default async function Dashboard() {
     redirect("/login");
     }
 
-    const [communities, friends, collaborations] = await Promise.all([
+    const [communities, friends, collaborations, leagueHighlight] = await Promise.all([
         getAllCommunities(),
-        getAnnaFriends(),
-        getAnnaCollaborations(),
+        getUserFriends(user.id),
+        getUserCollaborations(user.id),
+        getUserLeagueHighlight(user.id),
     ]);
     const french = communities.find((community) => community.slug === "french");
 
@@ -42,12 +44,43 @@ export default async function Dashboard() {
     <div className="px-10 py-2">
         <div className="flex items-center justify-between">
             <div>
-                <h1 className="font-family-name:--font-heading) tracking-tight text-6xl font-light text-white">
+                <h1 className="font-family-name:--font-heading) tracking-tight text-6xl pb-3 font-light text-white">
                     What's up, {user.name}
                 </h1>
+                {leagueHighlight && (
                 <p className="text-white pb-4">
-                    You’re currently <span className="font-bold">15</span> points ahead from <a className="underline font-bold" href="/profile/lyuk">Lyuk</a> in the <a className="underline font-bold" href="/leagues">Freud League</a>
+                    {leagueHighlight.aheadOf ? (
+                        <>
+                            You&apos;re currently <span className="font-bold">{leagueHighlight.aheadOf.diff}</span> points ahead of{" "}
+                            <a className="underline font-bold" href={`/profile/${leagueHighlight.aheadOf.username}`}>
+                                {leagueHighlight.aheadOf.displayName}
+                            </a>{" "}
+                            in the{" "}
+                            <a className="underline font-bold" href="/leagues">
+                                {leagueHighlight.leagueName} League
+                            </a>
+                        </>
+                    ) : leagueHighlight.behind ? (
+                        <>
+                            You&apos;re <span className="font-bold">{leagueHighlight.behind.diff}</span> points behind{" "}
+                            <a className="underline font-bold" href={`/profile/${leagueHighlight.behind.username}`}>
+                                {leagueHighlight.behind.displayName}
+                            </a>{" "}
+                            in the{" "}
+                            <a className="underline font-bold" href="/leagues">
+                                {leagueHighlight.leagueName} League
+                            </a>
+                        </>
+                    ) : (
+                        <>
+                            You&apos;re leading the{" "}
+                            <a className="underline font-bold" href="/leagues">
+                                {leagueHighlight.leagueName} League
+                            </a>
+                        </>
+                    )}
                 </p>
+                )}
                 <a href="/communities/french/forum">
                     <div className="bg-[linear-gradient(rgba(0,0,0,0.5),rgba(0,0,0,0.5)),url(/testing/french-banner.jpg)] bg-cover bg-center h-40 w-120 rounded-2xl p-4 cursor-pointer transition-transform hover:scale-[1.02]">
                         <div className="flex items-start justify-between gap-4">

@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build --turbopack",
-    "start": "next start"
+    "start": "next start",
+    "db:seed-auth": "node --env-file=.env scripts/seed-demo-auth.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.3",

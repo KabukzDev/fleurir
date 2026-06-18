@@ -1,22 +1,30 @@
 import Image from "next/image";
 import Link from "next/link";
-import { getAnnaFriends } from "@/lib/demo-social";
+import { redirect } from "next/navigation";
+import { getUser } from "@/lib/auth";
+import { getUserFriends } from "@/lib/demo-social";
 
 export const metadata = {
   title: "Friends",
 };
 
 export default async function FriendsPage() {
-  const friends = await getAnnaFriends();
+  const user = await getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  const friends = await getUserFriends(user.id);
 
   return (
     <main className="min-h-screen text-white px-6 py-6">
       <div className="max-w-7xl mx-auto space-y-6">
         <section className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
-            <h1 className="text-5xl font-light">Anna's friends</h1>
+            <h1 className="text-5xl font-light">{user.name}&apos;s friends</h1>
             <p className="text-white/55 mt-2 max-w-2xl">
-              People Anna has worked with across community posts, answers, and
+              People you have worked with across community posts, answers, and
               replies.
             </p>
           </div>

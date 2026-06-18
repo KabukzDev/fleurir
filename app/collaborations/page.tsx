@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { getAnnaCollaborations, getAnnaFriends } from "@/lib/demo-social";
+import { redirect } from "next/navigation";
+import { getUser } from "@/lib/auth";
+import { getUserCollaborations, getUserFriends } from "@/lib/demo-social";
 
 export const metadata = {
   title: "Collaborations",
@@ -12,9 +14,15 @@ const actionLabels = {
 };
 
 export default async function CollaborationsPage() {
+  const user = await getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
   const [collaborations, friends] = await Promise.all([
-    getAnnaCollaborations(),
-    getAnnaFriends(),
+    getUserCollaborations(user.id),
+    getUserFriends(user.id),
   ]);
   const totalPoints = collaborations.reduce(
     (total, collaboration) => total + collaboration.points,
@@ -26,9 +34,9 @@ export default async function CollaborationsPage() {
       <div className="max-w-7xl mx-auto space-y-6">
         <section className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
-            <h1 className="text-5xl font-light">Global collaborations</h1>
+            <h1 className="text-5xl font-light">My collaborations</h1>
             <p className="text-white/55 mt-2 max-w-2xl">
-              All community threads where Anna has posted, answered, or joined
+              All community threads where you have posted, answered, or joined
               the conversation.
             </p>
           </div>

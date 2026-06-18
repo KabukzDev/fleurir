@@ -83,6 +83,11 @@ export default function Login() {
               ? "Log in to your account"
               : "Begin your journey with us"}
           </p>
+          {mode === "login" && (
+            <p className="text-white/35 text-xs mt-2 text-center">
+              Demo: anna@gofleurir.com / demo1234
+            </p>
+          )}
         </div>
 
         {error && (

@@ -490,10 +490,6 @@ export async function getUserContributionStats(
   };
 }
 
-export async function getAnnaCollaborations(): Promise<Collaboration[]> {
-  return getUserCollaborations("anna");
-}
-
 export async function getUserCollaborations(
   username: string
 ): Promise<Collaboration[]> {
@@ -556,8 +552,8 @@ export async function getUserCollaborations(
   return collaborations.sort((a, b) => b.points - a.points);
 }
 
-export async function getAnnaFriends(): Promise<Friend[]> {
-  const collaborations = await getAnnaCollaborations();
+export async function getUserFriends(username: string): Promise<Friend[]> {
+  const collaborations = await getUserCollaborations(username);
   const profiles = await getProfilesMap();
   const friendMap = new Map<
     string,
@@ -600,6 +596,83 @@ export async function getAnnaFriends(): Promise<Friend[]> {
       };
     })
     .sort((a, b) => b.collaborations - a.collaborations);
+}
+
+export type LeagueHighlight = {
+  leagueId: string;
+  leagueName: string;
+  userScore: number;
+  aheadOf: {
+    username: string;
+    displayName: string;
+    diff: number;
+  } | null;
+  behind: {
+    username: string;
+    displayName: string;
+    diff: number;
+  } | null;
+};
+
+export async function getUserLeagueHighlight(
+  username: string
+): Promise<LeagueHighlight | null> {
+  const supabase = await createSupabaseServerClient();
+
+  if (!supabase) return null;
+
+  const { data: userEntries, error: userError } = await supabase
+    .from("league_entries")
+    .select("league_id, score")
+    .eq("username", username)
+    .order("score", { ascending: false });
+
+  if (userError) throw userError;
+  if (!userEntries?.length) return null;
+
+  const bestEntry = userEntries[0];
+  const leagueId = bestEntry.league_id;
+
+  const [{ data: league, error: leagueError }, { data: entries, error: entriesError }] =
+    await Promise.all([
+      supabase.from("leagues").select("name").eq("id", leagueId).maybeSingle(),
+      supabase
+        .from("league_entries")
+        .select("username, display_name, score")
+        .eq("league_id", leagueId)
+        .order("score", { ascending: false }),
+    ]);
+
+  if (leagueError) throw leagueError;
+  if (entriesError) throw entriesError;
+  if (!entries?.length) return null;
+
+  const index = entries.findIndex((entry) => entry.username === username);
+  if (index === -1) return null;
+
+  const userScore = entries[index].score;
+  const ahead = index > 0 ? entries[index - 1] : null;
+  const behind = index < entries.length - 1 ? entries[index + 1] : null;
+
+  return {
+    leagueId,
+    leagueName: league?.name || leagueId,
+    userScore,
+    aheadOf: behind
+      ? {
+          username: behind.username,
+          displayName: behind.display_name,
+          diff: userScore - behind.score,
+        }
+      : null,
+    behind: ahead
+      ? {
+          username: ahead.username,
+          displayName: ahead.display_name,
+          diff: ahead.score - userScore,
+        }
+      : null,
+  };
 }
 
 export async function getLeaguesData() {

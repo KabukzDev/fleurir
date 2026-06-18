@@ -24,7 +24,7 @@ export default async function RootLayout({children,}: {children: React.ReactNode
           {children}
           <footer>
             <p className="text-white/50 text-xs text-center py-6">
-              This is a demonstration. The final version of the product may include additional features and improvements.
+              This is a beta release of Fleurir. Please report any bugs or issues through the <a href="mailto:frederickc2104@gmail.com?subject=Fleurir%20Feedback" className="underline">developer's email</a>.
             </p>
           </footer>
         </div>
