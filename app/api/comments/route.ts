@@ -59,12 +59,42 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Log in first." }, { status: 401 });
   }
 
-  const body = await request.json();
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return NextResponse.json(
+      { error: "File attachment is too large for server payload limits. Please choose a smaller file." },
+      { status: 413 }
+    );
+  }
+
   const content = String(body.content || "").trim();
-  const attachmentUrl = body.attachmentUrl ? String(body.attachmentUrl).trim() : null;
+  let attachmentUrl = body.attachmentUrl ? String(body.attachmentUrl).trim() : null;
 
   if (!content) {
     return NextResponse.json({ error: "Comment is required." }, { status: 400 });
+  }
+
+  // If attachment is a data URL, upload to Google Drive cloud storage
+  if (attachmentUrl && attachmentUrl.startsWith("data:")) {
+    try {
+      const match = attachmentUrl.match(/^data:([^;]+);(?:name=([^;]+);)?base64,(.+)$/);
+      if (match) {
+        const mimeType = match[1] || "application/octet-stream";
+        const rawFileName = match[2] ? decodeURIComponent(match[2]) : `attachment_${Date.now()}`;
+        const base64Data = match[3];
+        const buffer = Buffer.from(base64Data, "base64");
+
+        const { uploadFileToGoogleDrive } = await import("@/lib/gdrive");
+        attachmentUrl = await uploadFileToGoogleDrive(buffer, rawFileName, mimeType);
+      }
+    } catch (gdriveErr: any) {
+      return NextResponse.json(
+        { error: `Google Drive Upload Failed: ${gdriveErr?.message || "Storage error"}` },
+        { status: 500 }
+      );
+    }
   }
 
   const { data, error } = await db

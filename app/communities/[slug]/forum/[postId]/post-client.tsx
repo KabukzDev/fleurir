@@ -48,6 +48,7 @@ export default function PostClient({
   const [error, setError] = useState("");
   const [hasNewCommentsNotice, setHasNewCommentsNotice] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const canDeletePost = currentUser && (currentUser.username === post?.author || currentUser.role === "administrator");
   const canSolvePost = currentUser && (currentUser.username === post?.author || currentUser.role === "mentor" || currentUser.role === "administrator");
@@ -57,25 +58,79 @@ export default function PostClient({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+    const isImage = file.type.startsWith("image/");
+
+    // 10MB hard limit check
+    const MAX_FILE_SIZE = 10 * 1024 * 1024;
     if (file.size > MAX_FILE_SIZE) {
-      setError("File size exceeds the 10MB limit. Please attach a smaller file.");
+      setError("File size exceeds 10MB limit. Please select a smaller file.");
       e.target.value = "";
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === "string") {
-        let payload = reader.result;
-        if (payload.startsWith("data:") && !payload.includes(";name=")) {
-          payload = payload.replace(";base64,", `;name=${encodeURIComponent(file.name)};base64,`);
-        }
-        setAttachmentUrl(payload);
-        setAttachmentName(file.name);
+    if (isImage) {
+      // Compress image using canvas
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          let width = img.width;
+          let height = img.height;
+          const maxDim = 1600;
+
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, width, height);
+            let compressedDataUrl = canvas.toDataURL("image/jpeg", 0.82);
+            compressedDataUrl = compressedDataUrl.replace(";base64,", `;name=${encodeURIComponent(file.name)};base64,`);
+            setAttachmentUrl(compressedDataUrl);
+            setAttachmentName(file.name);
+          } else {
+            setAttachmentUrl(event.target?.result as string);
+            setAttachmentName(file.name);
+          }
+        };
+        img.onerror = () => setError("Failed to process image file.");
+        img.src = event.target?.result as string;
+      };
+      reader.onerror = () => setError("Failed to read image file.");
+      reader.readAsDataURL(file);
+    } else {
+      // Office document file (.pdf, .docx, .xlsx, .pptx, etc.)
+      const MAX_DOC_SIZE = 3.5 * 1024 * 1024; // 3.5MB for documents
+      if (file.size > MAX_DOC_SIZE) {
+        setError("Document file exceeds 3.5MB storage limit. Please select a smaller document.");
+        e.target.value = "";
+        return;
       }
-    };
-    reader.readAsDataURL(file);
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === "string") {
+          let payload = reader.result;
+          if (payload.startsWith("data:") && !payload.includes(";name=")) {
+            payload = payload.replace(";base64,", `;name=${encodeURIComponent(file.name)};base64,`);
+          }
+          setAttachmentUrl(payload);
+          setAttachmentName(file.name);
+        }
+      };
+      reader.onerror = () => setError("Failed to read document file.");
+      reader.readAsDataURL(file);
+    }
   };
 
   // Real-time polling for new comments every 4 seconds
@@ -115,29 +170,45 @@ export default function PostClient({
 
   const handleReply = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    setError("");
 
     if (!reply.trim()) return;
 
-    const response = await fetch("/api/comments", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        postId,
-        content: reply.trim(),
-        attachmentUrl: attachmentUrl.trim() || null,
-      }),
-    });
-    const data = await response.json();
+    setIsSubmitting(true);
 
-    if (!response.ok) {
-      setError(data.error || "Could not post reply.");
-      return;
+    try {
+      const response = await fetch("/api/comments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          postId,
+          content: reply.trim(),
+          attachmentUrl: attachmentUrl ? attachmentUrl.trim() : null,
+        }),
+      });
+
+      let data;
+      try {
+        data = await response.json();
+      } catch {
+        throw new Error("Attachment is too large to submit. Please choose a smaller file.");
+      }
+
+      if (!response.ok) {
+        setError(data?.error || "Could not post reply.");
+        return;
+      }
+
+      const nextComment: Comment = data.comment;
+      setCommentsList((prev) => [nextComment, ...prev]);
+      setReply("");
+      setAttachmentUrl("");
+      setAttachmentName("");
+    } catch (err: any) {
+      setError(err?.message || "Failed to post reply. Please try again.");
+    } finally {
+      setIsSubmitting(false);
     }
-
-    const nextComment: Comment = data.comment;
-    setCommentsList((prev) => [nextComment, ...prev]);
-    setReply("");
-    setAttachmentUrl("");
   };
 
   const handleDeletePost = async () => {
@@ -421,8 +492,15 @@ export default function PostClient({
 
           <div className="flex justify-end mt-4">
             {error && <p className="mr-auto text-red-300 text-sm font-medium">{error}</p>}
-            <button className="bg-flower-blue hover:bg-flower-blue/90 px-5 py-2 rounded-xl">
-              {post.type === "question" ? "Post Answer" : "Post Reply"}
+            <button
+              disabled={isSubmitting}
+              className="bg-flower-blue hover:bg-flower-blue/90 disabled:opacity-50 px-5 py-2 rounded-xl text-white font-medium transition cursor-pointer"
+            >
+              {isSubmitting
+                ? "Uploading..."
+                : post.type === "question"
+                ? "Post Answer"
+                : "Post Reply"}
             </button>
           </div>
         </form>
