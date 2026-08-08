@@ -15,6 +15,7 @@ type Comment = {
   id: string | number;
   author: string;
   content: string;
+  attachmentUrl?: string;
   upvotes: number;
   accepted?: boolean;
   replies?: Reply[];
@@ -42,12 +43,25 @@ export default function PostClient({
   const [post, setPost] = useState<ForumPost | null>(initialPost);
   const [commentsList, setCommentsList] = useState<Comment[]>(initialPost?.comments || []);
   const [reply, setReply] = useState("");
+  const [attachmentUrl, setAttachmentUrl] = useState("");
   const [error, setError] = useState("");
   const [hasNewCommentsNotice, setHasNewCommentsNotice] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
   const canDeletePost = currentUser && (currentUser.username === post?.author || currentUser.role === "administrator");
   const canSolvePost = currentUser && (currentUser.username === post?.author || currentUser.role === "mentor" || currentUser.role === "administrator");
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        setAttachmentUrl(reader.result);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
 
   // Real-time polling for new comments every 4 seconds
   useEffect(() => {
@@ -59,7 +73,6 @@ export default function PostClient({
         if (res.ok) {
           const data = await res.json();
           const fetchedComments: Comment[] = data.comments || [];
-          // If server has more comments than local commentsList (from other users), notify
           if (fetchedComments.length > commentsList.length) {
             setHasNewCommentsNotice(true);
           }
@@ -93,7 +106,11 @@ export default function PostClient({
     const response = await fetch("/api/comments", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ postId, content: reply.trim() }),
+      body: JSON.stringify({
+        postId,
+        content: reply.trim(),
+        attachmentUrl: attachmentUrl.trim() || null,
+      }),
     });
     const data = await response.json();
 
@@ -105,6 +122,7 @@ export default function PostClient({
     const nextComment: Comment = data.comment;
     setCommentsList((prev) => [nextComment, ...prev]);
     setReply("");
+    setAttachmentUrl("");
   };
 
   const handleDeletePost = async () => {
@@ -322,7 +340,7 @@ export default function PostClient({
 
         <form
           onSubmit={handleReply}
-          className="bg-white/5 rounded-3xl p-5 border border-white/5"
+          className="bg-white/5 rounded-3xl p-5 border border-white/5 space-y-3"
         >
           <textarea
             value={reply}
@@ -335,6 +353,54 @@ export default function PostClient({
             rows={4}
             className="w-full bg-transparent resize-none outline-none placeholder:text-white/25"
           />
+
+          {/* Attachment Controls */}
+          <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-white/10 text-sm">
+            <label className="cursor-pointer bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition">
+              <span>📎 Upload File/Image</span>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleFileUpload}
+                className="hidden"
+              />
+            </label>
+
+            <span className="text-white/30">or URL:</span>
+
+            <input
+              type="text"
+              value={attachmentUrl.startsWith("data:") ? "[Uploaded Local Image]" : attachmentUrl}
+              onChange={(e) => setAttachmentUrl(e.target.value)}
+              placeholder="Paste image/file URL..."
+              className="bg-white/5 px-3 py-1.5 rounded-xl text-white outline-none flex-1 placeholder:text-white/25 text-sm min-w-[200px]"
+            />
+
+            {attachmentUrl && (
+              <button
+                type="button"
+                onClick={() => setAttachmentUrl("")}
+                className="text-red-300 hover:text-red-400 text-xs px-2"
+              >
+                Clear Attachment
+              </button>
+            )}
+          </div>
+
+          {/* Attachment Preview in Form */}
+          {attachmentUrl && (
+            <div className="mt-2 p-2 bg-white/5 rounded-xl inline-block max-w-xs relative">
+              {attachmentUrl.startsWith("data:image/") || attachmentUrl.match(/\.(png|jpg|jpeg|gif|webp)(\?.*)?$/i) ? (
+                <img
+                  src={attachmentUrl}
+                  alt="Attachment Preview"
+                  className="max-h-36 rounded-lg object-contain"
+                />
+              ) : (
+                <span className="text-xs text-flower-blue truncate block">📎 {attachmentUrl}</span>
+              )}
+            </div>
+          )}
 
           <div className="flex justify-end mt-4">
             {error && <p className="mr-auto text-red-300">{error}</p>}
@@ -407,6 +473,28 @@ export default function PostClient({
                 </div>
 
                 <p className="mt-4 text-white/85">{comment.content}</p>
+
+                {/* Attachment rendering */}
+                {comment.attachmentUrl && (
+                  <div className="mt-4">
+                    {comment.attachmentUrl.startsWith("data:image/") || comment.attachmentUrl.match(/\.(png|jpg|jpeg|gif|webp)(\?.*)?$/i) ? (
+                      <img
+                        src={comment.attachmentUrl}
+                        alt="Comment attachment"
+                        className="max-h-64 rounded-xl object-contain border border-white/10 bg-black/40"
+                      />
+                    ) : (
+                      <a
+                        href={comment.attachmentUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-xl text-sm text-flower-blue transition"
+                      >
+                        <span>📎 View Attachment</span>
+                      </a>
+                    )}
+                  </div>
+                )}
 
                 {comment.replies && comment.replies.length > 0 && (
                   <div className="mt-4 ml-6 pl-4 border-l border-white/10 space-y-3">

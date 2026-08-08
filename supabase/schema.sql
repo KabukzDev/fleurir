@@ -48,6 +48,7 @@ create table if not exists public.comments (
   post_id uuid not null references public.posts(id) on delete cascade,
   author_username text not null references public.profiles(username),
   content text not null,
+  attachment_url text,
   upvotes integer not null default 0,
   accepted boolean not null default false,
   created_at timestamptz not null default now()

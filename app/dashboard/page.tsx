@@ -1,5 +1,6 @@
 import {
     getAllCommunities,
+    getUserJoinedCommunities,
     getUserCollaborations,
     getUserFriends,
     getUserLeagueHighlight,
@@ -20,13 +21,14 @@ export default async function Dashboard() {
     redirect("/login");
     }
 
-    const [communities, friends, collaborations, leagueHighlight] = await Promise.all([
+    const [allCommunities, myCommunities, friends, collaborations, leagueHighlight] = await Promise.all([
         getAllCommunities(),
+        getUserJoinedCommunities(user.id),
         getUserFriends(user.id),
         getUserCollaborations(user.id),
         getUserLeagueHighlight(user.id),
     ]);
-    const french = communities.find((community) => community.slug === "french");
+    const french = allCommunities.find((community) => community.slug === "french");
 
     const recentActivities = [
         { id: '1', userImage: '/testing/lucas.jpg', userName: 'Lucas', subject: 'Chemistry', points: 21, type: 'gave' as const },
@@ -35,7 +37,7 @@ export default async function Dashboard() {
     ];
 
     const buttons = [
-        { id: 1, icon:"diversity_3", title: "My communities", members: communities.length, img: "...", link: "/communities" },
+        { id: 1, icon:"diversity_3", title: "My communities", members: myCommunities.length, img: "...", link: "/communities" },
         { id: 2, icon:"group", title: "My friends", members: friends.length, img: "...", link: "/friends" },
         { id: 3, icon:"person_raised_hand", title: "My collaborations", members: collaborations.length, img: "...", link: "/collaborations" },
     ];

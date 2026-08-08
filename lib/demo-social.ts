@@ -149,6 +149,7 @@ type DbComment = {
   id: string;
   author_username: string;
   content: string;
+  attachment_url?: string;
   upvotes: number;
   accepted: boolean;
   comment_replies?: DbReply[];
@@ -207,6 +208,7 @@ function normalizePost(post: DbPost): ForumPost {
     id: comment.id,
     author: comment.author_username,
     content: comment.content,
+    attachmentUrl: comment.attachment_url,
     upvotes: comment.upvotes,
     accepted: comment.accepted,
     replies: (comment.comment_replies || []).map((reply) => ({
@@ -323,6 +325,23 @@ export async function isUserCommunityMember(slug: string, username: string): Pro
     .maybeSingle();
 
   return Boolean(data);
+}
+
+export async function getUserJoinedCommunities(username: string) {
+  const supabase = await createSupabaseServerClient();
+  if (!supabase || !username) return [];
+
+  const { data } = await supabase
+    .from("community_members")
+    .select("community_slug")
+    .eq("username", username);
+
+  if (!data || data.length === 0) return [];
+
+  const joinedSlugs = new Set(data.map((r) => r.community_slug));
+  const communities = await getAllCommunities();
+
+  return communities.filter((c) => joinedSlugs.has(c.slug));
 }
 
 export async function isUserFriend(userUsername: string, friendUsername: string): Promise<boolean> {
@@ -722,15 +741,20 @@ export async function getLeaguesData() {
   for (const entry of (entries || []) as DbLeagueEntry[]) {
     const profile = users.get(entry.username);
     const list = leaderboards[entry.league_id] || [];
+    const liveScore = profile ? profile.points : entry.score;
 
     list.push({
       username: entry.username,
       displayName: entry.display_name,
       image: profile?.image,
-      score: entry.score,
+      score: liveScore,
       collaborations: entry.collaborations,
     });
     leaderboards[entry.league_id] = list;
+  }
+
+  for (const key in leaderboards) {
+    leaderboards[key].sort((a, b) => b.score - a.score);
   }
 
   return {

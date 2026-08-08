@@ -18,7 +18,7 @@ export async function GET(request: Request) {
 
   const { data, error } = await db
     .from("comments")
-    .select("id, author_username, content, upvotes, accepted, created_at, comment_replies(*)")
+    .select("id, author_username, content, attachment_url, upvotes, accepted, created_at, comment_replies(*)")
     .eq("post_id", postId)
     .order("created_at", { ascending: false });
 
@@ -30,6 +30,7 @@ export async function GET(request: Request) {
     id: c.id,
     author: c.author_username,
     content: c.content,
+    attachmentUrl: c.attachment_url,
     upvotes: c.upvotes,
     accepted: c.accepted,
     createdAt: c.created_at,
@@ -60,6 +61,7 @@ export async function POST(request: Request) {
 
   const body = await request.json();
   const content = String(body.content || "").trim();
+  const attachmentUrl = body.attachmentUrl ? String(body.attachmentUrl).trim() : null;
 
   if (!content) {
     return NextResponse.json({ error: "Comment is required." }, { status: 400 });
@@ -71,8 +73,9 @@ export async function POST(request: Request) {
       post_id: body.postId,
       author_username: user.id,
       content,
+      attachment_url: attachmentUrl,
     })
-    .select("id, author_username, content, upvotes, accepted")
+    .select("id, author_username, content, attachment_url, upvotes, accepted")
     .single();
 
   if (error) {
@@ -84,6 +87,7 @@ export async function POST(request: Request) {
       id: data.id,
       author: data.author_username,
       content: data.content,
+      attachmentUrl: data.attachment_url,
       upvotes: data.upvotes,
       accepted: data.accepted,
       replies: [],
