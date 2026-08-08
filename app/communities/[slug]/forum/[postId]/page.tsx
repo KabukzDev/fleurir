@@ -1,4 +1,5 @@
 import { getForumPost } from "@/lib/demo-social";
+import { getUser } from "@/lib/auth";
 import PostClient from "./post-client";
 
 type PostPageProps = {
@@ -11,13 +12,17 @@ type PostPageProps = {
 export default async function PostPage({ params }: PostPageProps) {
   const { slug, postId } = await params;
 
-  const post = await getForumPost(slug, postId);
+  const [post, user] = await Promise.all([
+    getForumPost(slug, postId),
+    getUser(),
+  ]);
 
   return (
     <PostClient
       slug={slug}
       postId={postId}
       initialPost={post}
+      currentUser={user ? { username: user.id, role: user.role } : null}
     />
   );
 }

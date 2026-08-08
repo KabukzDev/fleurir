@@ -67,10 +67,17 @@ export async function POST(request: Request) {
     );
   }
 
+  const defaultImages = [
+    "/default/profile1.png",
+   "/default/profile2.png"
+  ];
+
+  const randomImage = defaultImages[Math.floor(Math.random() * defaultImages.length)];
+
   const { error: profileError } = await admin.from("profiles").insert({
     username,
     auth_user_id: created.user.id,
-    image: "/testing/anna_test.png",
+    image: randomImage,
     name,
     email,
     role: "member",

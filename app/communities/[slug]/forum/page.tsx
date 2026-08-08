@@ -1,4 +1,5 @@
 import { getCommunity, getForumPosts } from "@/lib/demo-social";
+import { getUser } from "@/lib/auth";
 import ForumClient from "./forum-client";
 
 type ForumProps = {
@@ -8,9 +9,10 @@ type ForumProps = {
 export default async function ForumPage({ params }: ForumProps) {
   const { slug } = await params;
 
-  const [community, posts] = await Promise.all([
+  const [community, posts, user] = await Promise.all([
     getCommunity(slug),
     getForumPosts(slug),
+    getUser(),
   ]);
 
   return (
@@ -18,6 +20,7 @@ export default async function ForumPage({ params }: ForumProps) {
       slug={slug}
       communityName={community?.name || slug}
       initialPosts={posts}
+      currentUser={user ? { username: user.id, role: user.role } : null}
     />
   );
 }

@@ -2,11 +2,13 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
-  getAllUsers,
   getUserContributionStats,
   getUserCollaborations,
   getUserProfile,
+  isUserFriend,
 } from "@/lib/demo-social";
+import { getUser } from "@/lib/auth";
+import FriendToggleButton from "@/app/components/friend-toggle-button";
 
 type ProfilePageProps = {
   params: Promise<{ username: string }>;
@@ -34,9 +36,17 @@ export async function generateMetadata({ params }: ProfilePageProps) {
 
 export default async function ProfilePage({ params }: ProfilePageProps) {
   const { username } = await params;
-  const profile = await getUserProfile(username);
+  const [profile, currentUser] = await Promise.all([
+    getUserProfile(username),
+    getUser(),
+  ]);
 
   if (!profile) notFound();
+
+  const isCurrentUsersOwnProfile = currentUser?.id === username;
+  const initialIsFriend = currentUser && !isCurrentUsersOwnProfile
+    ? await isUserFriend(currentUser.id, username)
+    : false;
 
   const [stats, collaborations] = await Promise.all([
     getUserContributionStats(username),
@@ -79,6 +89,12 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
                   <span className="rounded-xl bg-white/5 px-3 py-1 capitalize">
                     {profile.role}
                   </span>
+                  {currentUser && !isCurrentUsersOwnProfile && (
+                    <FriendToggleButton
+                      friendUsername={username}
+                      initialIsFriend={initialIsFriend}
+                    />
+                  )}
                 </div>
                 <p className="text-white/50 mt-1">@{username}</p>
                 <p className="text-white/75 mt-4 max-w-2xl">{profile.bio}</p>
@@ -99,7 +115,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
             <div className="grid grid-cols-2 gap-2 lg:w-72">
               <div className="rounded-2xl bg-mist-950/60 px-4 py-3">
                 <p className="text-white/45">Points</p>
-                <p className="text-2xl">{stats.points}</p>
+                <p className="text-2xl">{profile.points}</p>
               </div>
               <div className="rounded-2xl bg-mist-950/60 px-4 py-3">
                 <p className="text-white/45">Accepted</p>
@@ -119,7 +135,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
 
         <section className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="bg-white/5 rounded-2xl p-5">
-            <p className="text-white/50">Threads</p>
+            <p className="text-white/50">Posts</p>
             <p className="text-4xl font-light mt-2">{stats.posts}</p>
           </div>
           <div className="bg-white/5 rounded-2xl p-5">
@@ -131,71 +147,74 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
             <p className="text-4xl font-light mt-2">{stats.replies}</p>
           </div>
           <div className="bg-white/5 rounded-2xl p-5">
-            <p className="text-white/50">Communities</p>
-            <p className="text-4xl font-light mt-2">{stats.communities.length}</p>
+            <p className="text-white/50">Accepted Answers</p>
+            <p className="text-4xl font-light mt-2">{stats.acceptedAnswers}</p>
           </div>
         </section>
 
-        <section className="grid grid-cols-1 lg:grid-cols-[360px_1fr] gap-5">
-          <aside className="bg-white/5 rounded-2xl p-5 h-fit">
-            <h2 className="text-2xl font-light">Communities</h2>
-            <div className="mt-4 space-y-2">
-              {stats.communities.map((community) => (
-                <Link
-                  key={community.slug}
-                  href={`/communities/${community.slug}`}
-                  className="flex items-center justify-between rounded-xl bg-mist-950/60 px-3 py-2 hover:bg-white/10"
+        <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 bg-white/5 border border-white/5 rounded-3xl p-6">
+            <h2 className="text-2xl font-light mb-4">Activity Timeline</h2>
+
+            <div className="space-y-4">
+              {recentActivity.map((activity) => (
+                <div
+                  key={activity.id}
+                  className="bg-white/5 rounded-2xl p-4 flex justify-between items-center"
                 >
-                  <span>
-                    {community.symbol} {community.name}
-                  </span>
-                  <span className="text-white/55">{community.contributions}</span>
-                </Link>
-              ))}
-            </div>
-          </aside>
-
-          <section className="space-y-3">
-            <h2 className="text-2xl font-light">Recent activity</h2>
-
-            {recentActivity.slice(0, 10).map((activity) => (
-              <Link
-                key={activity.id}
-                href={`/communities/${activity.communitySlug}/forum/${activity.postId}`}
-                className="block bg-white/5 rounded-2xl p-5 border border-white/5 hover:bg-white/10"
-              >
-                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                   <div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded-lg bg-mist-950/70 px-2 py-1">
-                        {activity.communityName}
-                      </span>
-                      <span className="rounded-lg bg-white/5 px-2 py-1 text-sm">
-                        {activity.action}
-                      </span>
-                      {activity.solved && (
-                        <span className="rounded-lg bg-green-500/15 px-2 py-1 text-sm text-green-300">
-                          Solved
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xl mt-3">{activity.title}</p>
+                    <span className="text-xs bg-white/10 rounded px-2 py-0.5 text-white/70">
+                      {activity.communityName}
+                    </span>
+                    <h3 className="text-lg mt-1 font-normal">
+                      <Link
+                        href={`/communities/${activity.communitySlug}/forum/${activity.postId}`}
+                        className="hover:underline"
+                      >
+                        {activity.title}
+                      </Link>
+                    </h3>
+                    <p className="text-white/50 text-sm">{activity.action}</p>
                   </div>
 
-                  <div className="rounded-xl bg-mist-950/60 px-3 py-2 text-sm md:w-24">
-                    <p className="text-white/45">Points</p>
-                    <p>{activity.points}</p>
+                  <div className="text-right">
+                    <span className="text-flower-blue font-medium">
+                      +{activity.points} pts
+                    </span>
+                    {activity.solved && (
+                      <p className="text-green-300 text-xs mt-1">Solved</p>
+                    )}
                   </div>
                 </div>
-              </Link>
-            ))}
+              ))}
 
-            {recentActivity.length === 0 && (
-              <div className="bg-white/5 rounded-2xl p-8 text-center text-white/50">
-                No activity yet.
-              </div>
-            )}
-          </section>
+              {recentActivity.length === 0 && (
+                <p className="text-white/40 text-sm">No recent activity.</p>
+              )}
+            </div>
+          </div>
+
+          <div className="bg-white/5 border border-white/5 rounded-3xl p-6 h-fit">
+            <h2 className="text-2xl font-light mb-4">Active Communities</h2>
+
+            <div className="space-y-3">
+              {stats.communities.map((community) => (
+                <div
+                  key={community.slug}
+                  className="flex justify-between items-center p-3 bg-white/5 rounded-xl"
+                >
+                  <span className="font-medium">{community.name}</span>
+                  <span className="text-white/50 text-sm">
+                    {community.contributions} contributions
+                  </span>
+                </div>
+              ))}
+
+              {stats.communities.length === 0 && (
+                <p className="text-white/40 text-sm">No active communities.</p>
+              )}
+            </div>
+          </div>
         </section>
       </div>
     </main>

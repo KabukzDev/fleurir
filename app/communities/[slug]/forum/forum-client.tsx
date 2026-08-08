@@ -36,12 +36,17 @@ type ForumClientProps = {
   slug: string;
   communityName: string;
   initialPosts: ForumPost[];
+  currentUser?: {
+    username: string;
+    role: string;
+  } | null;
 };
 
 export default function ForumClient({
   slug,
   communityName,
   initialPosts,
+  currentUser,
 }: ForumClientProps) {
   const [query, setQuery] = useState("");
   const [solvedOnly, setSolvedOnly] = useState(false);

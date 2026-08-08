@@ -311,37 +311,56 @@ export async function getForumPost(slug: string, postId: string) {
   return posts.find((post) => post.id === postId) || null;
 }
 
-function memberUsernamesForCommunity(community: DbCommunity, posts: ForumPost[]) {
-  const usernames = new Set<string>([community.manager_username]);
+export async function isUserCommunityMember(slug: string, username: string): Promise<boolean> {
+  const supabase = await createSupabaseServerClient();
+  if (!supabase || !username) return false;
 
-  for (const post of posts) {
-    usernames.add(post.author);
-    for (const comment of post.comments) {
-      usernames.add(comment.author);
-      for (const reply of comment.replies) {
-        usernames.add(reply.author);
-      }
-    }
-  }
+  const { data } = await supabase
+    .from("community_members")
+    .select("username")
+    .eq("community_slug", slug)
+    .eq("username", username)
+    .maybeSingle();
 
-  return usernames;
+  return Boolean(data);
+}
+
+export async function isUserFriend(userUsername: string, friendUsername: string): Promise<boolean> {
+  const supabase = await createSupabaseServerClient();
+  if (!supabase || !userUsername || !friendUsername) return false;
+
+  const { data } = await supabase
+    .from("friends")
+    .select("id")
+    .eq("user_username", userUsername)
+    .eq("friend_username", friendUsername)
+    .maybeSingle();
+
+  return Boolean(data);
 }
 
 export async function getAllCommunities() {
-  const [communities, allPosts, profiles] = await Promise.all([
+  const supabase = await createSupabaseServerClient();
+  const [communities, profiles] = await Promise.all([
     getRawCommunities(),
-    getForumPosts(),
     getProfilesMap(),
   ]);
 
+  let memberRows: { community_slug: string; username: string }[] = [];
+  if (supabase) {
+    const { data } = await supabase.from("community_members").select("community_slug, username");
+    memberRows = data || [];
+  }
+
+  const memberMap = new Map<string, Set<string>>();
+  for (const row of memberRows) {
+    const set = memberMap.get(row.community_slug) || new Set();
+    set.add(row.username);
+    memberMap.set(row.community_slug, set);
+  }
+
   return communities.map((community) => {
-    const communityPosts = allPosts.filter(
-      (post) => post.communitySlug === community.slug
-    );
-    const usernames = memberUsernamesForCommunity(
-      community,
-      communityPosts
-    );
+    const usernames = memberMap.get(community.slug) || new Set();
     const members = [...usernames]
       .map((username) => profiles.get(username))
       .filter(Boolean) as UserProfile[];
@@ -372,6 +391,7 @@ export async function getCommunity(slug: string) {
 }
 
 export async function getCommunityMembers(slug: string) {
+  const supabase = await createSupabaseServerClient();
   const [community, posts, profiles] = await Promise.all([
     getRawCommunities().then((items) =>
       items.find((item) => item.slug === slug)
@@ -382,9 +402,16 @@ export async function getCommunityMembers(slug: string) {
 
   if (!community) return [];
 
-  const usernames = memberUsernamesForCommunity(community, posts);
+  let memberUsernames: string[] = [];
+  if (supabase) {
+    const { data } = await supabase
+      .from("community_members")
+      .select("username")
+      .eq("community_slug", slug);
+    memberUsernames = (data || []).map((r) => r.username);
+  }
 
-  return [...usernames]
+  return memberUsernames
     .map((username) => profiles.get(username))
     .filter(Boolean)
     .map((profile) => {
@@ -553,49 +580,30 @@ export async function getUserCollaborations(
 }
 
 export async function getUserFriends(username: string): Promise<Friend[]> {
-  const collaborations = await getUserCollaborations(username);
+  const supabase = await createSupabaseServerClient();
+  if (!supabase || !username) return [];
+
+  const { data: friendRows } = await supabase
+    .from("friends")
+    .select("friend_username")
+    .eq("user_username", username);
+
+  if (!friendRows || friendRows.length === 0) return [];
+
+  const friendUsernames = friendRows.map((r) => r.friend_username);
   const profiles = await getProfilesMap();
-  const friendMap = new Map<
-    string,
-    {
-      sharedCommunitySlugs: Set<string>;
-      collaborations: number;
-    }
-  >();
-
-  for (const collaboration of collaborations) {
-    for (const username of collaboration.collaboratorUsernames) {
-      if (!profiles.has(username)) continue;
-
-      const friend = friendMap.get(username) || {
-        sharedCommunitySlugs: new Set<string>(),
-        collaborations: 0,
-      };
-
-      friend.sharedCommunitySlugs.add(collaboration.communitySlug);
-      friend.collaborations += 1;
-      friendMap.set(username, friend);
-    }
-  }
-
   const communities = await getRawCommunities();
 
-  return [...friendMap.entries()]
-    .map(([username, data], index) => {
-      const profile = profiles.get(username)!;
-      const sharedCommunitySlugs = [...data.sharedCommunitySlugs];
-
-      return {
-        ...profile,
-        sharedCommunitySlugs,
-        sharedCommunities: sharedCommunitySlugs.map(
-          (slug) => communities.find((community) => community.slug === slug)?.name || slug
-        ),
-        collaborations: data.collaborations,
-        lastActive: index % 2 === 0 ? "Today" : "This week",
-      };
-    })
-    .sort((a, b) => b.collaborations - a.collaborations);
+  return friendUsernames
+    .map((fUsername) => profiles.get(fUsername))
+    .filter(Boolean)
+    .map((profile, index) => ({
+      ...profile!,
+      sharedCommunitySlugs: [],
+      sharedCommunities: [],
+      collaborations: 0,
+      lastActive: index % 2 === 0 ? "Today" : "This week",
+    }));
 }
 
 export type LeagueHighlight = {

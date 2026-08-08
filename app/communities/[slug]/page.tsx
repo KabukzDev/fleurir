@@ -1,7 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import Card from "@/app/components/card";
-import { getAllCommunities, getCommunity } from "@/lib/demo-social";
+import CommunityJoinButton from "@/app/components/community-join-button";
+import { getAllCommunities, getCommunity, isUserCommunityMember } from "@/lib/demo-social";
+import { getUser } from "@/lib/auth";
 
 type CommunityPageProps = {
   params: Promise<{ slug: string }>;
@@ -12,14 +14,17 @@ export default async function CommunityPage({
 }: CommunityPageProps) {
   const { slug } = await params;
 
-  const [community, communities] = await Promise.all([
+  const [community, communities, user] = await Promise.all([
     getCommunity(slug),
     getAllCommunities(),
+    getUser(),
   ]);
 
   if (!community) {
     return <div className="text-white p-10">Community not found</div>;
   }
+
+  const isJoined = user ? await isUserCommunityMember(slug, user.id) : false;
 
   const cards = [
     {
@@ -46,7 +51,7 @@ export default async function CommunityPage({
 
         <aside className="w-90 bg-white/5 rounded-3xl p-4 h-fit">
           <h2 className="leading-none tracking-tight font-medium text-2xl text-flower-blue mx-2 mt-2 mb-4">
-            My communities
+            Communities
           </h2>
 
           <div className="space-y-2">
@@ -95,12 +100,9 @@ export default async function CommunityPage({
               </div>
 
               <div className="flex items-center gap-3">
-                <Link
-                  href={`/communities/${slug}`}
-                  className="bg-flower-blue hover:bg-flower-blue/85 px-4 py-1 rounded-lg"
-                >
-                  Joined
-                </Link>
+                {user && (
+                  <CommunityJoinButton slug={slug} initialJoined={isJoined} />
+                )}
 
                 <div className="bg-black/60 backdrop-blur-sm rounded-lg px-2 py-2 text-center flex items-center gap-1">
                     <span className="text-white icon icon-rounded icon-filled icon-24">group</span>

@@ -82,6 +82,36 @@ create table if not exists public.league_entries (
   unique (league_id, username)
 );
 
+create table if not exists public.community_members (
+  community_slug text not null references public.communities(slug) on delete cascade,
+  username text not null references public.profiles(username) on delete cascade,
+  joined_at timestamptz not null default now(),
+  primary key (community_slug, username)
+);
+
+create table if not exists public.friends (
+  id uuid primary key default gen_random_uuid(),
+  user_username text not null references public.profiles(username) on delete cascade,
+  friend_username text not null references public.profiles(username) on delete cascade,
+  status text not null default 'accepted' check (status in ('pending', 'accepted')),
+  created_at timestamptz not null default now(),
+  unique (user_username, friend_username)
+);
+
+create table if not exists public.post_upvotes (
+  post_id uuid not null references public.posts(id) on delete cascade,
+  username text not null references public.profiles(username) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (post_id, username)
+);
+
+create table if not exists public.comment_upvotes (
+  comment_id uuid not null references public.comments(id) on delete cascade,
+  username text not null references public.profiles(username) on delete cascade,
+  created_at timestamptz not null default now(),
+  primary key (comment_id, username)
+);
+
 alter table public.profiles enable row level security;
 alter table public.communities enable row level security;
 alter table public.posts enable row level security;
@@ -89,6 +119,10 @@ alter table public.comments enable row level security;
 alter table public.comment_replies enable row level security;
 alter table public.leagues enable row level security;
 alter table public.league_entries enable row level security;
+alter table public.community_members enable row level security;
+alter table public.friends enable row level security;
+alter table public.post_upvotes enable row level security;
+alter table public.comment_upvotes enable row level security;
 
 drop policy if exists "Profiles are public" on public.profiles;
 create policy "Profiles are public"
@@ -104,6 +138,38 @@ with check (auth.uid() = auth_user_id);
 drop policy if exists "Communities are public" on public.communities;
 create policy "Communities are public"
 on public.communities for select
+using (true);
+
+drop policy if exists "Community members are public" on public.community_members;
+create policy "Community members are public"
+on public.community_members for select
+using (true);
+
+drop policy if exists "Authenticated users can manage community membership" on public.community_members;
+create policy "Authenticated users can manage community membership"
+on public.community_members for all
+to authenticated
+using (true);
+
+drop policy if exists "Friends are public" on public.friends;
+create policy "Friends are public"
+on public.friends for select
+using (true);
+
+drop policy if exists "Authenticated users can manage friends" on public.friends;
+create policy "Authenticated users can manage friends"
+on public.friends for all
+to authenticated
+using (true);
+
+drop policy if exists "Post upvotes are public" on public.post_upvotes;
+create policy "Post upvotes are public"
+on public.post_upvotes for select
+using (true);
+
+drop policy if exists "Comment upvotes are public" on public.comment_upvotes;
+create policy "Comment upvotes are public"
+on public.comment_upvotes for select
 using (true);
 
 drop policy if exists "Posts are public" on public.posts;

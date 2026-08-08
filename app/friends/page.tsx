@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getUser } from "@/lib/auth";
 import { getUserFriends } from "@/lib/demo-social";
+import FriendToggleButton from "@/app/components/friend-toggle-button";
 
 export const metadata = {
   title: "Friends",
@@ -24,16 +25,15 @@ export default async function FriendsPage() {
           <div>
             <h1 className="text-5xl font-light">{user.name}&apos;s friends</h1>
             <p className="text-white/55 mt-2 max-w-2xl">
-              People you have worked with across community posts, answers, and
-              replies.
+              Manage your friends list and view profile connections.
             </p>
           </div>
 
           <Link
-            href="/collaborations"
-            className="w-fit px-4 py-2 rounded-xl bg-flower-blue hover:bg-flower-blue/90"
+            href="/discover"
+            className="w-fit px-4 py-2 rounded-xl bg-flower-blue hover:bg-flower-blue/90 text-white"
           >
-            View collaborations
+            Find People
           </Link>
         </section>
 
@@ -41,18 +41,6 @@ export default async function FriendsPage() {
           <div className="bg-white/5 rounded-2xl p-5">
             <p className="text-white/50">Friends</p>
             <p className="text-4xl font-light mt-2">{friends.length}</p>
-          </div>
-          <div className="bg-white/5 rounded-2xl p-5">
-            <p className="text-white/50">Shared communities</p>
-            <p className="text-4xl font-light mt-2">
-              {new Set(friends.flatMap((friend) => friend.sharedCommunitySlugs)).size}
-            </p>
-          </div>
-          <div className="bg-white/5 rounded-2xl p-5">
-            <p className="text-white/50">Total shared work</p>
-            <p className="text-4xl font-light mt-2">
-              {friends.reduce((total, friend) => total + friend.collaborations, 0)}
-            </p>
           </div>
         </section>
 
@@ -74,32 +62,28 @@ export default async function FriendsPage() {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <h2 className="text-2xl leading-tight">{friend.name}</h2>
+                      <Link
+                        href={`/profile/${friend.username}`}
+                        className="text-2xl leading-tight hover:underline"
+                      >
+                        {friend.name}
+                      </Link>
                       <p className="text-white/50">@{friend.username}</p>
                     </div>
-                    <span className="rounded-lg bg-white/5 px-2 py-1 text-sm capitalize">
-                      {friend.role}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="rounded-lg bg-white/5 px-2 py-1 text-sm capitalize">
+                        {friend.role}
+                      </span>
+                      <FriendToggleButton
+                        friendUsername={friend.username}
+                        initialIsFriend={true}
+                      />
+                    </div>
                   </div>
 
                   <p className="text-white/70 mt-3">{friend.bio}</p>
 
-                  <div className="flex flex-wrap gap-2 mt-4">
-                    {friend.sharedCommunities.map((community) => (
-                      <span
-                        key={community}
-                        className="rounded-lg bg-white/5 px-2 py-1 text-xs"
-                      >
-                        {community}
-                      </span>
-                    ))}
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-2 mt-4 text-sm">
-                    <div className="bg-mist-950/60 rounded-xl px-3 py-2">
-                      <p className="text-white/45">Shared</p>
-                      <p>{friend.collaborations}</p>
-                    </div>
+                  <div className="grid grid-cols-2 gap-2 mt-4 text-sm">
                     <div className="bg-mist-950/60 rounded-xl px-3 py-2">
                       <p className="text-white/45">Points</p>
                       <p>{friend.points}</p>
@@ -113,6 +97,12 @@ export default async function FriendsPage() {
               </div>
             </article>
           ))}
+
+          {friends.length === 0 && (
+            <div className="bg-white/5 rounded-2xl p-8 text-center text-white/50 col-span-2">
+              You haven&apos;t added any friends yet. Visit user profiles or discover users to add friends!
+            </div>
+          )}
         </section>
       </div>
     </main>
