@@ -187,15 +187,20 @@ export default function PostClient({
         });
       }
 
+      const responseText = await response.text();
       let data;
       try {
-        data = await response.json();
+        data = JSON.parse(responseText);
       } catch {
-        throw new Error("File attachment is too large to submit. Please choose a smaller file.");
+        const cleanText = responseText.replace(/<[^>]*>?/gm, "").trim();
+        if (!response.ok) {
+          throw new Error(cleanText ? `Server Error (${response.status}): ${cleanText.slice(0, 150)}` : `Server Error ${response.status}`);
+        }
+        throw new Error("Invalid response format from server.");
       }
 
       if (!response.ok) {
-        setError(data?.error || "Could not post reply.");
+        setError(data?.error || `Upload failed (${response.status})`);
         return;
       }
 
