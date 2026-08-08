@@ -45,6 +45,7 @@ export default function PostClient({
   const [reply, setReply] = useState("");
   const [attachmentUrl, setAttachmentUrl] = useState("");
   const [attachmentName, setAttachmentName] = useState("");
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
   const [error, setError] = useState("");
   const [hasNewCommentsNotice, setHasNewCommentsNotice] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -60,7 +61,7 @@ export default function PostClient({
 
     const isImage = file.type.startsWith("image/");
 
-    // 20MB hard limit check
+    // 20MB limit check
     const MAX_FILE_SIZE = 20 * 1024 * 1024;
     if (file.size > MAX_FILE_SIZE) {
       setError("File size exceeds 20MB limit. Please select a smaller file.");
@@ -68,8 +69,11 @@ export default function PostClient({
       return;
     }
 
+    setAttachmentFile(file);
+    setAttachmentName(file.name);
+
     if (isImage) {
-      // Compress image using canvas
+      // Compress image using canvas for local preview & data URL fallback
       const reader = new FileReader();
       reader.onload = (event) => {
         const img = new Image();
@@ -97,10 +101,8 @@ export default function PostClient({
             let compressedDataUrl = canvas.toDataURL("image/jpeg", 0.82);
             compressedDataUrl = compressedDataUrl.replace(";base64,", `;name=${encodeURIComponent(file.name)};base64,`);
             setAttachmentUrl(compressedDataUrl);
-            setAttachmentName(file.name);
           } else {
             setAttachmentUrl(event.target?.result as string);
-            setAttachmentName(file.name);
           }
         };
         img.onerror = () => setError("Failed to process image file.");
@@ -109,27 +111,9 @@ export default function PostClient({
       reader.onerror = () => setError("Failed to read image file.");
       reader.readAsDataURL(file);
     } else {
-      // Office document file (.pdf, .docx, .xlsx, .pptx, etc.)
-      const MAX_DOC_SIZE = 10 * 1024 * 1024; // 10MB for documents
-      if (file.size > MAX_DOC_SIZE) {
-        setError("Document file exceeds 10MB limit. Please select a smaller document.");
-        e.target.value = "";
-        return;
-      }
-
-      const reader = new FileReader();
-      reader.onload = () => {
-        if (typeof reader.result === "string") {
-          let payload = reader.result;
-          if (payload.startsWith("data:") && !payload.includes(";name=")) {
-            payload = payload.replace(";base64,", `;name=${encodeURIComponent(file.name)};base64,`);
-          }
-          setAttachmentUrl(payload);
-          setAttachmentName(file.name);
-        }
-      };
-      reader.onerror = () => setError("Failed to read document file.");
-      reader.readAsDataURL(file);
+      // Office document file preview (.pdf, .docx, .xlsx, .pptx, etc.)
+      const objectUrl = URL.createObjectURL(file);
+      setAttachmentUrl(objectUrl);
     }
   };
 
@@ -177,21 +161,37 @@ export default function PostClient({
     setIsSubmitting(true);
 
     try {
-      const response = await fetch("/api/comments", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          postId,
-          content: reply.trim(),
-          attachmentUrl: attachmentUrl ? attachmentUrl.trim() : null,
-        }),
-      });
+      let response: Response;
+
+      if (attachmentFile) {
+        // Use binary multipart FormData stream to support up to 20MB documents
+        const formData = new FormData();
+        formData.append("postId", postId);
+        formData.append("content", reply.trim());
+        formData.append("file", attachmentFile);
+
+        response = await fetch("/api/comments", {
+          method: "POST",
+          body: formData,
+        });
+      } else {
+        // Use standard JSON payload for text comments / existing links
+        response = await fetch("/api/comments", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            postId,
+            content: reply.trim(),
+            attachmentUrl: attachmentUrl ? attachmentUrl.trim() : null,
+          }),
+        });
+      }
 
       let data;
       try {
         data = await response.json();
       } catch {
-        throw new Error("Attachment is too large to submit. Please choose a smaller file.");
+        throw new Error("File attachment is too large to submit. Please choose a smaller file.");
       }
 
       if (!response.ok) {
@@ -204,6 +204,7 @@ export default function PostClient({
       setReply("");
       setAttachmentUrl("");
       setAttachmentName("");
+      setAttachmentFile(null);
     } catch (err: any) {
       setError(err?.message || "Failed to post reply. Please try again.");
     } finally {

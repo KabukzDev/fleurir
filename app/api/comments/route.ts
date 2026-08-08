@@ -59,48 +59,89 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Log in first." }, { status: 401 });
   }
 
-  let body;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json(
-      { error: "File attachment is too large for server payload limits. Please choose a smaller file." },
-      { status: 413 }
-    );
-  }
+  const contentType = request.headers.get("content-type") || "";
+  let postId = "";
+  let content = "";
+  let attachmentUrl: string | null = null;
 
-  const content = String(body.content || "").trim();
-  let attachmentUrl = body.attachmentUrl ? String(body.attachmentUrl).trim() : null;
+  if (contentType.includes("multipart/form-data")) {
+    try {
+      const formData = await request.formData();
+      postId = String(formData.get("postId") || "").trim();
+      content = String(formData.get("content") || "").trim();
+      const file = formData.get("file") as File | null;
+
+      if (file && file.size > 0) {
+        const MAX_FILE_SIZE = 20 * 1024 * 1024;
+        if (file.size > MAX_FILE_SIZE) {
+          return NextResponse.json(
+            { error: "File exceeds 20MB upload limit." },
+            { status: 400 }
+          );
+        }
+
+        const buffer = Buffer.from(await file.arrayBuffer());
+        const mimeType = file.type || "application/octet-stream";
+        const fileName = file.name || `file_${Date.now()}`;
+
+        const { uploadFileToGoogleDrive } = await import("@/lib/gdrive");
+        attachmentUrl = await uploadFileToGoogleDrive(buffer, fileName, mimeType);
+      }
+    } catch (err: any) {
+      return NextResponse.json(
+        { error: `File Processing Error: ${err?.message || "Invalid upload format."}` },
+        { status: 400 }
+      );
+    }
+  } else {
+    // Legacy / JSON Payload fallback
+    let body;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        { error: "File attachment is too large for JSON payload. Please attach directly." },
+        { status: 413 }
+      );
+    }
+
+    postId = String(body.postId || "").trim();
+    content = String(body.content || "").trim();
+    attachmentUrl = body.attachmentUrl ? String(body.attachmentUrl).trim() : null;
+
+    if (attachmentUrl && attachmentUrl.startsWith("data:")) {
+      try {
+        const match = attachmentUrl.match(/^data:([^;]+);(?:name=([^;]+);)?base64,(.+)$/);
+        if (match) {
+          const mimeType = match[1] || "application/octet-stream";
+          const rawFileName = match[2] ? decodeURIComponent(match[2]) : `attachment_${Date.now()}`;
+          const base64Data = match[3];
+          const buffer = Buffer.from(base64Data, "base64");
+
+          const { uploadFileToGoogleDrive } = await import("@/lib/gdrive");
+          attachmentUrl = await uploadFileToGoogleDrive(buffer, rawFileName, mimeType);
+        }
+      } catch (gdriveErr: any) {
+        return NextResponse.json(
+          { error: `Google Drive Upload Failed: ${gdriveErr?.message || "Storage error"}` },
+          { status: 500 }
+        );
+      }
+    }
+  }
 
   if (!content) {
     return NextResponse.json({ error: "Comment is required." }, { status: 400 });
   }
 
-  // If attachment is a data URL, upload to Google Drive cloud storage
-  if (attachmentUrl && attachmentUrl.startsWith("data:")) {
-    try {
-      const match = attachmentUrl.match(/^data:([^;]+);(?:name=([^;]+);)?base64,(.+)$/);
-      if (match) {
-        const mimeType = match[1] || "application/octet-stream";
-        const rawFileName = match[2] ? decodeURIComponent(match[2]) : `attachment_${Date.now()}`;
-        const base64Data = match[3];
-        const buffer = Buffer.from(base64Data, "base64");
-
-        const { uploadFileToGoogleDrive } = await import("@/lib/gdrive");
-        attachmentUrl = await uploadFileToGoogleDrive(buffer, rawFileName, mimeType);
-      }
-    } catch (gdriveErr: any) {
-      return NextResponse.json(
-        { error: `Google Drive Upload Failed: ${gdriveErr?.message || "Storage error"}` },
-        { status: 500 }
-      );
-    }
+  if (!postId) {
+    return NextResponse.json({ error: "Post ID required." }, { status: 400 });
   }
 
   const { data, error } = await db
     .from("comments")
     .insert({
-      post_id: body.postId,
+      post_id: postId,
       author_username: user.id,
       content,
       attachment_url: attachmentUrl,
