@@ -1,11 +1,11 @@
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseServerClient, createSupabaseAdminClient } from "@/lib/supabase/server";
 
 export async function addPointsToUser(username: string, pointsAmount: number) {
-  const supabase = await createSupabaseServerClient();
-  if (!supabase || !username || pointsAmount <= 0) return;
+  const db = createSupabaseAdminClient() || (await createSupabaseServerClient());
+  if (!db || !username || pointsAmount <= 0) return;
 
   // Fetch current user profile
-  const { data: profile } = await supabase
+  const { data: profile } = await db
     .from("profiles")
     .select("points, name")
     .eq("username", username)
@@ -16,27 +16,25 @@ export async function addPointsToUser(username: string, pointsAmount: number) {
   const newPoints = (profile.points || 0) + pointsAmount;
 
   // Update profiles.points
-  await supabase
+  await db
     .from("profiles")
     .update({ points: newPoints })
     .eq("username", username);
 
   // Update or insert into league_entries
-  // Fetch existing league entry for user
-  const { data: existingEntry } = await supabase
+  const { data: existingEntry } = await db
     .from("league_entries")
     .select("*")
     .eq("username", username)
     .maybeSingle();
 
   if (existingEntry) {
-    await supabase
+    await db
       .from("league_entries")
       .update({ score: newPoints })
       .eq("username", username);
   } else {
-    // Pick default league (e.g. gold-freud or first available)
-    await supabase.from("league_entries").insert({
+    await db.from("league_entries").insert({
       league_id: "gold-freud",
       username,
       display_name: profile.name || username,

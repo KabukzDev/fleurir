@@ -123,6 +123,7 @@ export default function PostClient({
 
   const handleToggleSolvePost = async () => {
     if (!post) return;
+    setError("");
     const nextSolved = !post.solved;
 
     const res = await fetch("/api/posts", {
@@ -130,62 +131,80 @@ export default function PostClient({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ postId, action: "toggleSolve", solved: nextSolved }),
     });
+    const data = await res.json();
 
     if (res.ok) {
       setPost({ ...post, solved: nextSolved });
+    } else {
+      setError(data.error || "Could not update post.");
     }
   };
 
   const handleUpvotePost = async () => {
     if (!post) return;
+    setError("");
     const res = await fetch("/api/posts", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ postId, action: "upvote" }),
     });
+    const data = await res.json();
 
     if (res.ok) {
-      const data = await res.json();
       setPost({ ...post, upvotes: data.upvotes });
+    } else {
+      setError(data.error || "Could not upvote post.");
     }
   };
 
   const handleDeleteComment = async (commentId: string | number) => {
     if (!confirm("Are you sure you want to delete this comment?")) return;
+    setError("");
 
     const res = await fetch(`/api/comments?id=${commentId}`, { method: "DELETE" });
+    const data = await res.json();
+
     if (res.ok) {
       setCommentsList((prev) => prev.filter((c) => c.id !== commentId));
+    } else {
+      setError(data.error || "Could not delete comment.");
     }
   };
 
   const handleToggleAcceptComment = async (commentId: string | number, currentAccepted?: boolean) => {
+    setError("");
     const nextState = !currentAccepted;
     const res = await fetch("/api/comments", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ commentId, action: "toggleAccept", accepted: nextState }),
     });
+    const data = await res.json();
 
     if (res.ok) {
       setCommentsList((prev) =>
         prev.map((c) => (c.id === commentId ? { ...c, accepted: nextState } : c))
       );
+    } else {
+      setError(data.error || "Could not update comment.");
     }
   };
 
   const handleUpvoteComment = async (commentId: string | number) => {
+    setError("");
     const res = await fetch("/api/comments", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ commentId, action: "upvote" }),
     });
+    const data = await res.json();
 
     if (res.ok) {
-      const data = await res.json();
       setCommentsList((prev) =>
         prev.map((c) => (c.id === commentId ? { ...c, upvotes: data.upvotes } : c))
       );
+    } else {
+      setError(data.error || "Could not upvote comment.");
     }
   };
 
@@ -227,6 +246,13 @@ export default function PostClient({
         >
           ← Back to forum
         </Link>
+
+        {error && (
+          <div className="bg-red-500/20 border border-red-500/30 text-red-200 px-4 py-3 rounded-2xl flex justify-between items-center">
+            <span>{error}</span>
+            <button onClick={() => setError("")} className="text-sm opacity-70 hover:opacity-100">✕</button>
+          </div>
+        )}
 
         <section className="bg-white/5 rounded-3xl p-6 border border-white/5 relative">
           <div className="flex justify-between items-start gap-4">

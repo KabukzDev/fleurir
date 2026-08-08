@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import { getUser } from "@/lib/auth";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseServerClient, createSupabaseAdminClient } from "@/lib/supabase/server";
 import { addPointsToUser } from "@/lib/points";
 
 export async function GET(request: Request) {
-  const supabase = await createSupabaseServerClient();
-  if (!supabase) {
+  const db = createSupabaseAdminClient() || (await createSupabaseServerClient());
+  if (!db) {
     return NextResponse.json({ comments: [] });
   }
 
@@ -16,7 +16,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Post ID required" }, { status: 400 });
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("comments")
     .select("id, author_username, content, upvotes, accepted, created_at, comment_replies(*)")
     .eq("post_id", postId)
@@ -44,14 +44,12 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const [user, supabase] = await Promise.all([
-    getUser(),
-    createSupabaseServerClient(),
-  ]);
+  const user = await getUser();
+  const db = createSupabaseAdminClient() || (await createSupabaseServerClient());
 
-  if (!supabase) {
+  if (!db) {
     return NextResponse.json(
-      { error: "Supabase is not configured." },
+      { error: "Database client unavailable." },
       { status: 500 }
     );
   }
@@ -67,7 +65,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Comment is required." }, { status: 400 });
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("comments")
     .insert({
       post_id: body.postId,
@@ -94,13 +92,11 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const [user, supabase] = await Promise.all([
-    getUser(),
-    createSupabaseServerClient(),
-  ]);
+  const user = await getUser();
+  const db = createSupabaseAdminClient() || (await createSupabaseServerClient());
 
-  if (!supabase || !user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!db || !user) {
+    return NextResponse.json({ error: "Unauthorized. Please log in." }, { status: 401 });
   }
 
   const { searchParams } = new URL(request.url);
@@ -110,7 +106,7 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: "Comment ID required" }, { status: 400 });
   }
 
-  const { data: comment } = await supabase
+  const { data: comment } = await db
     .from("comments")
     .select("author_username")
     .eq("id", commentId)
@@ -130,7 +126,7 @@ export async function DELETE(request: Request) {
     );
   }
 
-  const { error } = await supabase.from("comments").delete().eq("id", commentId);
+  const { error } = await db.from("comments").delete().eq("id", commentId);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 400 });
@@ -140,13 +136,11 @@ export async function DELETE(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-  const [user, supabase] = await Promise.all([
-    getUser(),
-    createSupabaseServerClient(),
-  ]);
+  const user = await getUser();
+  const db = createSupabaseAdminClient() || (await createSupabaseServerClient());
 
-  if (!supabase || !user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!db || !user) {
+    return NextResponse.json({ error: "Unauthorized. Please log in." }, { status: 401 });
   }
 
   const body = await request.json();
@@ -156,7 +150,7 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "Comment ID required" }, { status: 400 });
   }
 
-  const { data: comment } = await supabase
+  const { data: comment } = await db
     .from("comments")
     .select("author_username, post_id, accepted, upvotes")
     .eq("id", commentId)
@@ -167,7 +161,7 @@ export async function PATCH(request: Request) {
   }
 
   if (action === "upvote") {
-    const { error: upvoteErr } = await supabase.from("comment_upvotes").insert({
+    const { error: upvoteErr } = await db.from("comment_upvotes").insert({
       comment_id: commentId,
       username: user.id,
     });
@@ -177,7 +171,11 @@ export async function PATCH(request: Request) {
     }
 
     const newUpvotes = (comment.upvotes || 0) + 1;
-    await supabase.from("comments").update({ upvotes: newUpvotes }).eq("id", commentId);
+    const { error: updateErr } = await db.from("comments").update({ upvotes: newUpvotes }).eq("id", commentId);
+
+    if (updateErr) {
+      return NextResponse.json({ error: updateErr.message }, { status: 400 });
+    }
 
     // Award +1 point to comment author
     await addPointsToUser(comment.author_username, 1);
@@ -187,7 +185,7 @@ export async function PATCH(request: Request) {
 
   if (action === "toggleAccept" || accepted !== undefined) {
     // Fetch post author
-    const { data: post } = await supabase
+    const { data: post } = await db
       .from("posts")
       .select("author_username")
       .eq("id", comment.post_id)
@@ -205,7 +203,7 @@ export async function PATCH(request: Request) {
     }
 
     const targetState = accepted !== undefined ? Boolean(accepted) : !comment.accepted;
-    const { error } = await supabase
+    const { error } = await db
       .from("comments")
       .update({ accepted: targetState })
       .eq("id", commentId);

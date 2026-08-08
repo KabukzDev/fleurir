@@ -1,17 +1,15 @@
 import { NextResponse } from "next/server";
 import { getUser } from "@/lib/auth";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseServerClient, createSupabaseAdminClient } from "@/lib/supabase/server";
 import { addPointsToUser } from "@/lib/points";
 
 export async function POST(request: Request) {
-  const [user, supabase] = await Promise.all([
-    getUser(),
-    createSupabaseServerClient(),
-  ]);
+  const user = await getUser();
+  const db = createSupabaseAdminClient() || (await createSupabaseServerClient());
 
-  if (!supabase) {
+  if (!db) {
     return NextResponse.json(
-      { error: "Supabase is not configured." },
+      { error: "Database client unavailable." },
       { status: 500 }
     );
   }
@@ -25,7 +23,7 @@ export async function POST(request: Request) {
     ? body.tags.map((tag: unknown) => String(tag).trim()).filter(Boolean)
     : [];
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("posts")
     .insert({
       community_slug: body.communitySlug,
@@ -46,13 +44,11 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const [user, supabase] = await Promise.all([
-    getUser(),
-    createSupabaseServerClient(),
-  ]);
+  const user = await getUser();
+  const db = createSupabaseAdminClient() || (await createSupabaseServerClient());
 
-  if (!supabase || !user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!db || !user) {
+    return NextResponse.json({ error: "Unauthorized. Please log in." }, { status: 401 });
   }
 
   const { searchParams } = new URL(request.url);
@@ -62,8 +58,7 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: "Post ID required" }, { status: 400 });
   }
 
-  // Fetch post author
-  const { data: post } = await supabase
+  const { data: post } = await db
     .from("posts")
     .select("author_username")
     .eq("id", postId)
@@ -80,7 +75,7 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ error: "Permission denied. Only author or administrator can delete this post." }, { status: 403 });
   }
 
-  const { error } = await supabase.from("posts").delete().eq("id", postId);
+  const { error } = await db.from("posts").delete().eq("id", postId);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 400 });
@@ -90,13 +85,11 @@ export async function DELETE(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-  const [user, supabase] = await Promise.all([
-    getUser(),
-    createSupabaseServerClient(),
-  ]);
+  const user = await getUser();
+  const db = createSupabaseAdminClient() || (await createSupabaseServerClient());
 
-  if (!supabase || !user) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!db || !user) {
+    return NextResponse.json({ error: "Unauthorized. Please log in." }, { status: 401 });
   }
 
   const body = await request.json();
@@ -106,7 +99,7 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "Post ID required" }, { status: 400 });
   }
 
-  const { data: post } = await supabase
+  const { data: post } = await db
     .from("posts")
     .select("author_username, solved, upvotes")
     .eq("id", postId)
@@ -118,7 +111,7 @@ export async function PATCH(request: Request) {
 
   if (action === "upvote") {
     // Upvote system (Reddit-like)
-    const { error: upvoteErr } = await supabase.from("post_upvotes").insert({
+    const { error: upvoteErr } = await db.from("post_upvotes").insert({
       post_id: postId,
       username: user.id,
     });
@@ -128,7 +121,11 @@ export async function PATCH(request: Request) {
     }
 
     const newUpvotes = (post.upvotes || 0) + 1;
-    await supabase.from("posts").update({ upvotes: newUpvotes }).eq("id", postId);
+    const { error: updateErr } = await db.from("posts").update({ upvotes: newUpvotes }).eq("id", postId);
+
+    if (updateErr) {
+      return NextResponse.json({ error: updateErr.message }, { status: 400 });
+    }
 
     // Award +1 point to author
     await addPointsToUser(post.author_username, 1);
@@ -149,7 +146,7 @@ export async function PATCH(request: Request) {
     }
 
     const targetSolvedState = solved !== undefined ? Boolean(solved) : !post.solved;
-    const { error } = await supabase
+    const { error } = await db
       .from("posts")
       .update({ solved: targetSolvedState })
       .eq("id", postId);
