@@ -44,6 +44,7 @@ export default function PostClient({
   const [commentsList, setCommentsList] = useState<Comment[]>(initialPost?.comments || []);
   const [reply, setReply] = useState("");
   const [attachmentUrl, setAttachmentUrl] = useState("");
+  const [attachmentName, setAttachmentName] = useState("");
   const [error, setError] = useState("");
   const [hasNewCommentsNotice, setHasNewCommentsNotice] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -52,12 +53,26 @@ export default function PostClient({
   const canSolvePost = currentUser && (currentUser.username === post?.author || currentUser.role === "mentor" || currentUser.role === "administrator");
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setError("");
     const file = e.target.files?.[0];
     if (!file) return;
+
+    const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+    if (file.size > MAX_FILE_SIZE) {
+      setError("File size exceeds the 10MB limit. Please attach a smaller file.");
+      e.target.value = "";
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = () => {
       if (typeof reader.result === "string") {
-        setAttachmentUrl(reader.result);
+        let payload = reader.result;
+        if (payload.startsWith("data:") && !payload.includes(";name=")) {
+          payload = payload.replace(";base64,", `;name=${encodeURIComponent(file.name)};base64,`);
+        }
+        setAttachmentUrl(payload);
+        setAttachmentName(file.name);
       }
     };
     reader.readAsDataURL(file);
@@ -354,33 +369,32 @@ export default function PostClient({
             className="w-full bg-transparent resize-none outline-none placeholder:text-white/25"
           />
 
-          {/* Attachment Controls */}
-          <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-white/10 text-sm">
-            <label className="cursor-pointer bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-xl flex items-center gap-1.5 transition">
-              <span>📎 Upload File/Image</span>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handleFileUpload}
-                className="hidden"
-              />
-            </label>
+          {/* Attachment Controls (Upload only, 10MB limit) */}
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-white/10 text-sm">
+            <div className="flex items-center gap-3">
+              <label className="cursor-pointer bg-white/10 hover:bg-white/20 text-white px-3.5 py-1.5 rounded-xl flex items-center gap-2 transition text-sm font-medium">
+                <span>📎 Attach File</span>
+                <input
+                  type="file"
+                  accept=".pdf,.docx,.doc,.xlsx,.xls,.pptx,.ppt,.txt,image/*"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+              </label>
 
-            <span className="text-white/30">or URL:</span>
-
-            <input
-              type="text"
-              value={attachmentUrl.startsWith("data:") ? "[Uploaded Local Image]" : attachmentUrl}
-              onChange={(e) => setAttachmentUrl(e.target.value)}
-              placeholder="Paste image/file URL..."
-              className="bg-white/5 px-3 py-1.5 rounded-xl text-white outline-none flex-1 placeholder:text-white/25 text-sm min-w-[200px]"
-            />
+              <span className="text-white/40 text-xs">
+                (Images, PDF, Word, Excel, PowerPoint - Max 10MB)
+              </span>
+            </div>
 
             {attachmentUrl && (
               <button
                 type="button"
-                onClick={() => setAttachmentUrl("")}
-                className="text-red-300 hover:text-red-400 text-xs px-2"
+                onClick={() => {
+                  setAttachmentUrl("");
+                  setAttachmentName("");
+                }}
+                className="text-red-300 hover:text-red-400 text-xs px-2 cursor-pointer"
               >
                 Clear Attachment
               </button>
@@ -389,7 +403,7 @@ export default function PostClient({
 
           {/* Attachment Preview in Form */}
           {attachmentUrl && (
-            <div className="mt-2 p-2 bg-white/5 rounded-xl inline-block max-w-xs relative">
+            <div className="mt-2 p-3 bg-white/5 border border-white/10 rounded-2xl inline-block max-w-sm relative">
               {attachmentUrl.startsWith("data:image/") || attachmentUrl.match(/\.(png|jpg|jpeg|gif|webp)(\?.*)?$/i) ? (
                 <img
                   src={attachmentUrl}
@@ -397,13 +411,16 @@ export default function PostClient({
                   className="max-h-36 rounded-lg object-contain"
                 />
               ) : (
-                <span className="text-xs text-flower-blue truncate block">📎 {attachmentUrl}</span>
+                <div className="flex items-center gap-2 text-sm text-flower-blue">
+                  <span className="text-xl">📄</span>
+                  <span className="font-medium truncate max-w-[200px]">{attachmentName || "Attached Document"}</span>
+                </div>
               )}
             </div>
           )}
 
           <div className="flex justify-end mt-4">
-            {error && <p className="mr-auto text-red-300">{error}</p>}
+            {error && <p className="mr-auto text-red-300 text-sm font-medium">{error}</p>}
             <button className="bg-flower-blue hover:bg-flower-blue/90 px-5 py-2 rounded-xl">
               {post.type === "question" ? "Post Answer" : "Post Reply"}
             </button>
@@ -474,7 +491,7 @@ export default function PostClient({
 
                 <p className="mt-4 text-white/85">{comment.content}</p>
 
-                {/* Attachment rendering */}
+                {/* Rich Attachment rendering */}
                 {comment.attachmentUrl && (
                   <div className="mt-4">
                     {comment.attachmentUrl.startsWith("data:image/") || comment.attachmentUrl.match(/\.(png|jpg|jpeg|gif|webp)(\?.*)?$/i) ? (
@@ -484,14 +501,52 @@ export default function PostClient({
                         className="max-h-64 rounded-xl object-contain border border-white/10 bg-black/40"
                       />
                     ) : (
-                      <a
-                        href={comment.attachmentUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-xl text-sm text-flower-blue transition"
-                      >
-                        <span>📎 View Attachment</span>
-                      </a>
+                      (() => {
+                        let name = "Attached Document";
+                        if (comment.attachmentUrl.includes(";name=")) {
+                          const match = comment.attachmentUrl.match(/;name=([^;]+)/);
+                          if (match) name = decodeURIComponent(match[1]);
+                        } else if (comment.attachmentUrl.startsWith("http") || comment.attachmentUrl.startsWith("/")) {
+                          const parts = comment.attachmentUrl.split("/");
+                          name = parts[parts.length - 1] || "Attachment";
+                        }
+
+                        let icon = "📄";
+                        let type = "Document";
+                        const lower = name.toLowerCase();
+                        if (lower.endsWith(".pdf") || comment.attachmentUrl.includes("application/pdf")) {
+                          icon = "📕";
+                          type = "PDF Document";
+                        } else if (lower.endsWith(".docx") || lower.endsWith(".doc")) {
+                          icon = "📝";
+                          type = "Word Document";
+                        } else if (lower.endsWith(".xlsx") || lower.endsWith(".xls")) {
+                          icon = "📊";
+                          type = "Excel Spreadsheet";
+                        } else if (lower.endsWith(".pptx") || lower.endsWith(".ppt")) {
+                          icon = "📙";
+                          type = "Presentation";
+                        }
+
+                        return (
+                          <a
+                            href={comment.attachmentUrl}
+                            download={name}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-3 p-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl transition max-w-sm"
+                          >
+                            <span className="text-2xl">{icon}</span>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-white font-medium text-sm truncate">{name}</p>
+                              <p className="text-white/40 text-xs">{type}</p>
+                            </div>
+                            <span className="text-flower-blue text-xs font-semibold px-2.5 py-1 bg-flower-blue/15 rounded-lg shrink-0">
+                              Download ⬇
+                            </span>
+                          </a>
+                        );
+                      })()
                     )}
                   </div>
                 )}

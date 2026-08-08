@@ -82,6 +82,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
+  // Award +1 point to author for posting a comment
+  await addPointsToUser(user.id, 1);
+
   return NextResponse.json({
     comment: {
       id: data.id,
@@ -216,9 +219,9 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
-    // Award +15 points to comment author when comment is marked accepted
+    // Award +20 points to comment author when comment is marked accepted
     if (targetState && !comment.accepted) {
-      await addPointsToUser(comment.author_username, 15);
+      await addPointsToUser(comment.author_username, 20);
     }
 
     return NextResponse.json({ success: true, accepted: targetState });

@@ -155,9 +155,9 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
-    // Award +15 points to post author when marked solved
+    // Award +20 points to post author when marked solved
     if (targetSolvedState && !post.solved) {
-      await addPointsToUser(post.author_username, 15);
+      await addPointsToUser(post.author_username, 20);
     }
 
     return NextResponse.json({ success: true, solved: targetSolvedState });

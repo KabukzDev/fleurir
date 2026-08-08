@@ -598,6 +598,154 @@ export async function getUserCollaborations(
   return collaborations.sort((a, b) => b.points - a.points);
 }
 
+export type DashboardActivityItem = {
+  id: string;
+  userImage: string;
+  userName: string;
+  subject: string;
+  points: number;
+  type: "gave" | "received";
+};
+
+export async function getUserRecentActivities(
+  username: string
+): Promise<DashboardActivityItem[]> {
+  const [communities, profiles] = await Promise.all([
+    getRawCommunities(),
+    getProfilesMap(),
+  ]);
+
+  const activities: DashboardActivityItem[] = [];
+
+  for (const community of communities) {
+    const posts = await getForumPosts(community.slug);
+
+    for (const post of posts) {
+      if (post.author === username) {
+        for (const comment of post.comments) {
+          if (comment.author !== username) {
+            const helperProfile = profiles.get(comment.author);
+            if (helperProfile) {
+              activities.push({
+                id: `rec-${post.id}-${comment.id}`,
+                userImage: helperProfile.image,
+                userName: helperProfile.name,
+                subject: community.name,
+                points: comment.upvotes + (comment.accepted ? 20 : 1),
+                type: "received",
+              });
+            }
+          }
+        }
+      } else {
+        const myComment = post.comments.find(
+          (c) => c.author === username
+        );
+        if (myComment) {
+          const authorProfile = profiles.get(post.author);
+          if (authorProfile) {
+            activities.push({
+              id: `gave-${post.id}-${myComment.id}`,
+              userImage: authorProfile.image,
+              userName: authorProfile.name,
+              subject: community.name,
+              points: myComment.upvotes + (myComment.accepted ? 20 : 1),
+              type: "gave",
+            });
+          }
+        }
+      }
+    }
+  }
+
+  const uniqueActivities: DashboardActivityItem[] = [];
+  const seenKeys = new Set<string>();
+
+  for (const act of activities) {
+    const key = `${act.type}-${act.userName}-${act.subject}`;
+    if (!seenKeys.has(key)) {
+      seenKeys.add(key);
+      uniqueActivities.push(act);
+    }
+  }
+
+  return uniqueActivities.slice(0, 3);
+}
+
+export type FriendshipStatus = "none" | "pending_sent" | "pending_received" | "accepted";
+
+export async function getFriendshipStatus(
+  userUsername: string,
+  targetUsername: string
+): Promise<FriendshipStatus> {
+  const supabase = await createSupabaseServerClient();
+  if (!supabase || !userUsername || !targetUsername) return "none";
+  if (userUsername === targetUsername) return "none";
+
+  const { data } = await supabase
+    .from("friends")
+    .select("user_username, friend_username, status")
+    .or(
+      `and(user_username.eq.${userUsername},friend_username.eq.${targetUsername}),and(user_username.eq.${targetUsername},friend_username.eq.${userUsername})`
+    );
+
+  if (!data || data.length === 0) return "none";
+
+  const accepted = data.find((r) => r.status === "accepted");
+  if (accepted) return "accepted";
+
+  const sentByMe = data.find(
+    (r) => r.user_username === userUsername && r.status === "pending"
+  );
+  if (sentByMe) return "pending_sent";
+
+  const receivedByMe = data.find(
+    (r) => r.friend_username === userUsername && r.status === "pending"
+  );
+  if (receivedByMe) return "pending_received";
+
+  return "none";
+}
+
+export type FriendRequestItem = {
+  id: string;
+  senderUsername: string;
+  senderName: string;
+  senderImage: string;
+  createdAt: string;
+};
+
+export async function getPendingFriendRequests(
+  username: string
+): Promise<FriendRequestItem[]> {
+  const supabase = await createSupabaseServerClient();
+  if (!supabase || !username) return [];
+
+  const { data: rows } = await supabase
+    .from("friends")
+    .select("id, user_username, created_at")
+    .eq("friend_username", username)
+    .eq("status", "pending");
+
+  if (!rows || rows.length === 0) return [];
+
+  const profiles = await getProfilesMap();
+
+  return rows
+    .map((row) => {
+      const sender = profiles.get(row.user_username);
+      if (!sender) return null;
+      return {
+        id: row.id,
+        senderUsername: sender.username,
+        senderName: sender.name,
+        senderImage: sender.image,
+        createdAt: row.created_at,
+      };
+    })
+    .filter(Boolean) as FriendRequestItem[];
+}
+
 export async function getUserFriends(username: string): Promise<Friend[]> {
   const supabase = await createSupabaseServerClient();
   if (!supabase || !username) return [];
@@ -605,13 +753,13 @@ export async function getUserFriends(username: string): Promise<Friend[]> {
   const { data: friendRows } = await supabase
     .from("friends")
     .select("friend_username")
-    .eq("user_username", username);
+    .eq("user_username", username)
+    .eq("status", "accepted");
 
   if (!friendRows || friendRows.length === 0) return [];
 
   const friendUsernames = friendRows.map((r) => r.friend_username);
   const profiles = await getProfilesMap();
-  const communities = await getRawCommunities();
 
   return friendUsernames
     .map((fUsername) => profiles.get(fUsername))
@@ -645,34 +793,39 @@ export async function getUserLeagueHighlight(
   username: string
 ): Promise<LeagueHighlight | null> {
   const supabase = await createSupabaseServerClient();
-
   if (!supabase) return null;
 
-  const { data: userEntries, error: userError } = await supabase
+  const profiles = await getProfilesMap();
+  const userProfile = profiles.get(username);
+  if (!userProfile) return null;
+
+  const { data: userEntries } = await supabase
     .from("league_entries")
-    .select("league_id, score")
-    .eq("username", username)
-    .order("score", { ascending: false });
+    .select("league_id")
+    .eq("username", username);
 
-  if (userError) throw userError;
-  if (!userEntries?.length) return null;
+  const leagueId = userEntries?.[0]?.league_id || "gold-freud";
 
-  const bestEntry = userEntries[0];
-  const leagueId = bestEntry.league_id;
+  const [{ data: league }, { data: rawEntries }] = await Promise.all([
+    supabase.from("leagues").select("name").eq("id", leagueId).maybeSingle(),
+    supabase
+      .from("league_entries")
+      .select("username, display_name, score")
+      .eq("league_id", leagueId),
+  ]);
 
-  const [{ data: league, error: leagueError }, { data: entries, error: entriesError }] =
-    await Promise.all([
-      supabase.from("leagues").select("name").eq("id", leagueId).maybeSingle(),
-      supabase
-        .from("league_entries")
-        .select("username, display_name, score")
-        .eq("league_id", leagueId)
-        .order("score", { ascending: false }),
-    ]);
+  if (!rawEntries?.length) return null;
 
-  if (leagueError) throw leagueError;
-  if (entriesError) throw entriesError;
-  if (!entries?.length) return null;
+  const entries = rawEntries
+    .map((e) => {
+      const prof = profiles.get(e.username);
+      return {
+        username: e.username,
+        display_name: e.display_name,
+        score: prof ? prof.points : e.score,
+      };
+    })
+    .sort((a, b) => b.score - a.score);
 
   const index = entries.findIndex((entry) => entry.username === username);
   if (index === -1) return null;
@@ -683,20 +836,20 @@ export async function getUserLeagueHighlight(
 
   return {
     leagueId,
-    leagueName: league?.name || leagueId,
+    leagueName: league?.name || "Freud",
     userScore,
     aheadOf: behind
       ? {
           username: behind.username,
           displayName: behind.display_name,
-          diff: userScore - behind.score,
+          diff: Math.abs(userScore - behind.score),
         }
       : null,
     behind: ahead
       ? {
           username: ahead.username,
           displayName: ahead.display_name,
-          diff: ahead.score - userScore,
+          diff: Math.abs(ahead.score - userScore),
         }
       : null,
   };

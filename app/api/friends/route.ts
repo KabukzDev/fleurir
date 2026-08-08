@@ -1,25 +1,53 @@
 import { NextResponse } from "next/server";
 import { getUser } from "@/lib/auth";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseServerClient, createSupabaseAdminClient } from "@/lib/supabase/server";
 
-export async function GET() {
+export async function GET(request: Request) {
   const [user, supabase] = await Promise.all([
     getUser(),
     createSupabaseServerClient(),
   ]);
 
   if (!supabase || !user) {
-    return NextResponse.json({ friends: [] });
+    return NextResponse.json({ friends: [], status: "none" });
   }
 
-  const { data, error } = await supabase
+  const { searchParams } = new URL(request.url);
+  const targetUsername = searchParams.get("targetUsername");
+
+  if (targetUsername) {
+    const { data } = await supabase
+      .from("friends")
+      .select("user_username, friend_username, status")
+      .or(
+        `and(user_username.eq.${user.id},friend_username.eq.${targetUsername}),and(user_username.eq.${targetUsername},friend_username.eq.${user.id})`
+      );
+
+    if (!data || data.length === 0) {
+      return NextResponse.json({ status: "none" });
+    }
+
+    const accepted = data.find((r) => r.status === "accepted");
+    if (accepted) return NextResponse.json({ status: "accepted" });
+
+    const sentByMe = data.find(
+      (r) => r.user_username === user.id && r.status === "pending"
+    );
+    if (sentByMe) return NextResponse.json({ status: "pending_sent" });
+
+    const receivedByMe = data.find(
+      (r) => r.friend_username === user.id && r.status === "pending"
+    );
+    if (receivedByMe) return NextResponse.json({ status: "pending_received" });
+
+    return NextResponse.json({ status: "none" });
+  }
+
+  const { data } = await supabase
     .from("friends")
     .select("friend_username")
-    .eq("user_username", user.id);
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 400 });
-  }
+    .eq("user_username", user.id)
+    .eq("status", "accepted");
 
   return NextResponse.json({ friends: (data || []).map((f) => f.friend_username) });
 }
@@ -30,11 +58,10 @@ export async function POST(request: Request) {
     createSupabaseServerClient(),
   ]);
 
-  if (!supabase) {
-    return NextResponse.json({ error: "Supabase not configured" }, { status: 500 });
-  }
-  if (!user) {
-    return NextResponse.json({ error: "Log in first." }, { status: 401 });
+  const db = createSupabaseAdminClient() || supabase;
+
+  if (!db || !user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const { friendUsername } = await request.json();
@@ -42,24 +69,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid friend username." }, { status: 400 });
   }
 
-  // Insert two-way friendship or simple friend row
-  const { error: err1 } = await supabase.from("friends").insert({
+  // Insert pending request
+  const { error } = await db.from("friends").insert({
     user_username: user.id,
     friend_username: friendUsername,
-    status: "accepted",
+    status: "pending",
   });
 
-  const { error: err2 } = await supabase.from("friends").insert({
-    user_username: friendUsername,
-    friend_username: user.id,
-    status: "accepted",
-  });
-
-  if (err1 && err1.code !== "23505") {
-    return NextResponse.json({ error: err1.message }, { status: 400 });
+  if (error && error.code !== "23505") {
+    return NextResponse.json({ error: error.message }, { status: 400 });
   }
 
-  return NextResponse.json({ success: true, isFriend: true });
+  return NextResponse.json({ success: true, status: "pending_sent" });
 }
 
 export async function DELETE(request: Request) {
@@ -68,11 +89,10 @@ export async function DELETE(request: Request) {
     createSupabaseServerClient(),
   ]);
 
-  if (!supabase) {
-    return NextResponse.json({ error: "Supabase not configured" }, { status: 500 });
-  }
-  if (!user) {
-    return NextResponse.json({ error: "Log in first." }, { status: 401 });
+  const db = createSupabaseAdminClient() || supabase;
+
+  if (!db || !user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const { searchParams } = new URL(request.url);
@@ -83,17 +103,17 @@ export async function DELETE(request: Request) {
   }
 
   await Promise.all([
-    supabase
+    db
       .from("friends")
       .delete()
       .eq("user_username", user.id)
       .eq("friend_username", friendUsername),
-    supabase
+    db
       .from("friends")
       .delete()
       .eq("user_username", friendUsername)
       .eq("friend_username", user.id),
   ]);
 
-  return NextResponse.json({ success: true, isFriend: false });
+  return NextResponse.json({ success: true, status: "none" });
 }

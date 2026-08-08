@@ -21,14 +21,13 @@ export async function addPointsToUser(username: string, pointsAmount: number) {
     .update({ points: newPoints })
     .eq("username", username);
 
-  // Update or insert into league_entries
-  const { data: existingEntry } = await db
+  // Update all existing entries in league_entries for this user
+  const { data: existingEntries } = await db
     .from("league_entries")
-    .select("*")
-    .eq("username", username)
-    .maybeSingle();
+    .select("id")
+    .eq("username", username);
 
-  if (existingEntry) {
+  if (existingEntries && existingEntries.length > 0) {
     await db
       .from("league_entries")
       .update({ score: newPoints })

@@ -5,7 +5,7 @@ import {
   getUserContributionStats,
   getUserCollaborations,
   getUserProfile,
-  isUserFriend,
+  getFriendshipStatus,
 } from "@/lib/demo-social";
 import { getUser } from "@/lib/auth";
 import FriendToggleButton from "@/app/components/friend-toggle-button";
@@ -44,9 +44,9 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
   if (!profile) notFound();
 
   const isCurrentUsersOwnProfile = currentUser?.id === username;
-  const initialIsFriend = currentUser && !isCurrentUsersOwnProfile
-    ? await isUserFriend(currentUser.id, username)
-    : false;
+  const friendshipStatus = currentUser && !isCurrentUsersOwnProfile
+    ? await getFriendshipStatus(currentUser.id, username)
+    : "none";
 
   const [stats, collaborations] = await Promise.all([
     getUserContributionStats(username),
@@ -92,7 +92,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
                   {currentUser && !isCurrentUsersOwnProfile && (
                     <FriendToggleButton
                       friendUsername={username}
-                      initialIsFriend={initialIsFriend}
+                      initialStatus={friendshipStatus}
                     />
                   )}
                 </div>
