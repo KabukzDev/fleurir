@@ -60,10 +60,10 @@ export default function PostClient({
 
     const isImage = file.type.startsWith("image/");
 
-    // 10MB hard limit check
-    const MAX_FILE_SIZE = 10 * 1024 * 1024;
+    // 20MB hard limit check
+    const MAX_FILE_SIZE = 20 * 1024 * 1024;
     if (file.size > MAX_FILE_SIZE) {
-      setError("File size exceeds 10MB limit. Please select a smaller file.");
+      setError("File size exceeds 20MB limit. Please select a smaller file.");
       e.target.value = "";
       return;
     }
@@ -110,9 +110,9 @@ export default function PostClient({
       reader.readAsDataURL(file);
     } else {
       // Office document file (.pdf, .docx, .xlsx, .pptx, etc.)
-      const MAX_DOC_SIZE = 3.5 * 1024 * 1024; // 3.5MB for documents
+      const MAX_DOC_SIZE = 10 * 1024 * 1024; // 10MB for documents
       if (file.size > MAX_DOC_SIZE) {
-        setError("Document file exceeds 3.5MB storage limit. Please select a smaller document.");
+        setError("Document file exceeds 10MB limit. Please select a smaller document.");
         e.target.value = "";
         return;
       }
@@ -454,7 +454,7 @@ export default function PostClient({
               </label>
 
               <span className="text-white/40 text-xs">
-                (Images, PDF, Word, Excel, PowerPoint - Max 10MB)
+                (Images, PDF, Word, Excel, PowerPoint - Max 20MB)
               </span>
             </div>
 
