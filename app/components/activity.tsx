@@ -12,13 +12,14 @@ interface Activity {
 interface UserProfileProps {
   userImage: string;
   activities: Activity[];
+  progressPercent?: number;
 }
 
-const ActivityProfile: React.FC<UserProfileProps> = ({ userImage, activities }) => {
+const ActivityProfile: React.FC<UserProfileProps> = ({ userImage, activities, progressPercent = 0.5 }) => {
   const radius = 110;
   const circumference = 2 * Math.PI * radius;
-  const progressPercent = 0.9;
-  const offset = circumference - progressPercent * circumference;
+  const validProgress = Math.min(1, Math.max(0.05, progressPercent));
+  const offset = circumference - validProgress * circumference;
 
   return (
     <div className="tracking-tight relative flex items-center justify-end gap-1 w-full max-w-full">

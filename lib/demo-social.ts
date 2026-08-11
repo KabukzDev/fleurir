@@ -112,6 +112,8 @@ export type LeaderboardEntry = {
   image?: string;
   score: number;
   collaborations: number;
+  isPromotionZone?: boolean;
+  isDemotionZone?: boolean;
 };
 
 type DbProfile = {
@@ -789,9 +791,7 @@ export type LeagueHighlight = {
   } | null;
 };
 
-export async function getUserLeagueHighlight(
-  username: string
-): Promise<LeagueHighlight | null> {
+export async function getUserLeagueHighlight(username: string) {
   const supabase = await createSupabaseServerClient();
   if (!supabase) return null;
 
@@ -804,40 +804,75 @@ export async function getUserLeagueHighlight(
     .select("league_id")
     .eq("username", username);
 
-  const leagueId = userEntries?.[0]?.league_id || "gold-freud";
+  let leagueId = userEntries?.[0]?.league_id;
 
-  const [{ data: league }, { data: rawEntries }] = await Promise.all([
-    supabase.from("leagues").select("name").eq("id", leagueId).maybeSingle(),
-    supabase
-      .from("league_entries")
-      .select("username, display_name, score")
-      .eq("league_id", leagueId),
-  ]);
+  const userPoints = userProfile.points;
 
-  if (!rawEntries?.length) return null;
+  if (!leagueId) {
+    if (userPoints >= 800) leagueId = "diamond";
+    else if (userPoints >= 500) leagueId = "ruby";
+    else if (userPoints >= 300) leagueId = "sapphire";
+    else if (userPoints >= 150) leagueId = "gold";
+    else if (userPoints >= 50) leagueId = "silver";
+    else leagueId = "bronze";
+  }
 
-  const entries = rawEntries
-    .map((e) => {
-      const prof = profiles.get(e.username);
-      return {
-        username: e.username,
-        display_name: e.display_name,
-        score: prof ? prof.points : e.score,
-      };
-    })
+  const tierConfig: Record<string, { name: string; nextName: string; min: number; target: number }> = {
+    bronze: { name: "Bronze", nextName: "Silver", min: 0, target: 50 },
+    silver: { name: "Silver", nextName: "Gold", min: 50, target: 150 },
+    gold: { name: "Gold", nextName: "Sapphire", min: 150, target: 300 },
+    sapphire: { name: "Sapphire", nextName: "Ruby", min: 300, target: 500 },
+    ruby: { name: "Ruby", nextName: "Diamond", min: 500, target: 800 },
+    diamond: { name: "Diamond", nextName: "Legend", min: 800, target: 1200 },
+  };
+
+  const currentTier = tierConfig[leagueId] || tierConfig.gold;
+
+  const pointsToNextTier = Math.max(0, currentTier.target - userPoints);
+  const range = currentTier.target - currentTier.min;
+  const progressPercent = range > 0
+    ? Math.min(1, Math.max(0.05, (userPoints - currentTier.min) / range))
+    : 0.9;
+
+  const { data: rawEntries } = await supabase
+    .from("league_entries")
+    .select("username, display_name, score, league_id")
+    .eq("league_id", leagueId);
+
+  const allUserList = Array.from(profiles.values()).filter((p) => {
+    let pLeague = (rawEntries || []).find((e: any) => e.username === p.username)?.league_id;
+    if (!pLeague) {
+      if (p.points >= 800) pLeague = "diamond";
+      else if (p.points >= 500) pLeague = "ruby";
+      else if (p.points >= 300) pLeague = "sapphire";
+      else if (p.points >= 150) pLeague = "gold";
+      else if (p.points >= 50) pLeague = "silver";
+      else pLeague = "bronze";
+    }
+    return pLeague === leagueId;
+  });
+
+  const entries = allUserList
+    .map((p) => ({
+      username: p.username,
+      display_name: p.name || p.username,
+      score: p.points,
+    }))
     .sort((a, b) => b.score - a.score);
 
   const index = entries.findIndex((entry) => entry.username === username);
-  if (index === -1) return null;
-
-  const userScore = entries[index].score;
+  const userScore = userPoints;
   const ahead = index > 0 ? entries[index - 1] : null;
-  const behind = index < entries.length - 1 ? entries[index + 1] : null;
+  const behind = index !== -1 && index < entries.length - 1 ? entries[index + 1] : null;
 
   return {
     leagueId,
-    leagueName: league?.name || "Freud",
+    leagueName: currentTier.name,
+    nextLeagueName: currentTier.nextName,
+    pointsToNextTier,
+    progressPercent,
     userScore,
+    userRank: index !== -1 ? index + 1 : 1,
     aheadOf: behind
       ? {
           username: behind.username,
@@ -858,66 +893,180 @@ export async function getUserLeagueHighlight(
 export async function getLeaguesData() {
   const supabase = await createSupabaseServerClient();
 
+  const defaultLeagues: League[] = [
+    {
+      id: "bronze",
+      tier: "Bronze",
+      name: "Explorer League",
+      threshold: "Top 20% Promoted ⬆",
+      accent: "#CD7F32",
+      banner: "/testing/banner_test.png",
+    },
+    {
+      id: "silver",
+      tier: "Silver",
+      name: "Collaborator League",
+      threshold: "Top 20% Promoted ⬆",
+      accent: "#C0C0C0",
+      banner: "/testing/banner_test.png",
+    },
+    {
+      id: "gold",
+      tier: "Gold",
+      name: "Scholar League",
+      threshold: "Top 20% Promoted ⬆",
+      accent: "#FFD700",
+      banner: "/testing/banner_test.png",
+    },
+    {
+      id: "sapphire",
+      tier: "Sapphire",
+      name: "Master League",
+      threshold: "Top 20% Promoted ⬆",
+      accent: "#0F52BA",
+      banner: "/testing/banner_test.png",
+    },
+    {
+      id: "ruby",
+      tier: "Ruby",
+      name: "Champion League",
+      threshold: "Top 20% Promoted ⬆",
+      accent: "#E0115F",
+      banner: "/testing/banner_test.png",
+    },
+    {
+      id: "diamond",
+      tier: "Diamond",
+      name: "Legend League",
+      threshold: "Top 20% Promoted ⬆",
+      accent: "#B9F2FF",
+      banner: "/testing/banner_test.png",
+    },
+  ];
+
   if (!supabase) {
     return {
-      currentLeagueId: "gold-freud",
+      currentLeagueId: "gold",
       season: {
-        name: "Seasonal Leagues",
-        endsIn: "12 days",
-        userProgressLabel: "257 points away from Einstein's League",
+        name: "Weekly League Season #14",
+        endsIn: "3 days 14 hours",
+        userProgressLabel: "Top 20% promote to next league",
       },
-      leagues: [] as League[],
+      leagues: defaultLeagues,
       leaderboards: {} as Record<string, LeaderboardEntry[]>,
     };
   }
 
-  const [{ data: leagues, error: leaguesError }, { data: entries, error: entriesError }, users] =
-    await Promise.all([
+  try {
+    const [
+      { data: dbLeagues },
+      { data: dbEntries },
+      { data: postsData },
+      { data: commentsData },
+      usersMap,
+    ] = await Promise.all([
       supabase.from("leagues").select("*").order("sort_order"),
-      supabase.from("league_entries").select("*").order("score", { ascending: false }),
+      supabase.from("league_entries").select("*"),
+      supabase.from("posts").select("author_username"),
+      supabase.from("comments").select("author_username, accepted"),
       getProfilesMap(),
     ]);
 
-  if (leaguesError) throw leaguesError;
-  if (entriesError) throw entriesError;
-
-  const normalizedLeagues = ((leagues || []) as DbLeague[]).map((league) => ({
-    id: league.id,
-    tier: league.tier,
-    name: league.name,
-    threshold: league.threshold,
-    accent: league.accent,
-    banner: league.banner,
-  }));
-  const leaderboards: Record<string, LeaderboardEntry[]> = {};
-
-  for (const entry of (entries || []) as DbLeagueEntry[]) {
-    const profile = users.get(entry.username);
-    const list = leaderboards[entry.league_id] || [];
-    const liveScore = profile ? profile.points : entry.score;
-
-    list.push({
-      username: entry.username,
-      displayName: entry.display_name,
-      image: profile?.image,
-      score: liveScore,
-      collaborations: entry.collaborations,
+    // Calculate total collaborations per user (Posts + Comments + Accepted Solutions)
+    const collabMap = new Map<string, number>();
+    (postsData || []).forEach((p: any) => {
+      if (p.author_username) {
+        collabMap.set(p.author_username, (collabMap.get(p.author_username) || 0) + 1);
+      }
     });
-    leaderboards[entry.league_id] = list;
-  }
+    (commentsData || []).forEach((c: any) => {
+      if (c.author_username) {
+        const addCount = c.accepted ? 2 : 1;
+        collabMap.set(c.author_username, (collabMap.get(c.author_username) || 0) + addCount);
+      }
+    });
 
-  for (const key in leaderboards) {
-    leaderboards[key].sort((a, b) => b.score - a.score);
-  }
+    const activeLeagues: League[] = (dbLeagues && dbLeagues.length > 0)
+      ? (dbLeagues as DbLeague[]).map((l) => ({
+          id: l.id,
+          tier: l.tier,
+          name: l.name,
+          threshold: l.threshold || "Top 20% Promoted ⬆",
+          accent: l.accent,
+          banner: l.banner || "/testing/banner_test.png",
+        }))
+      : defaultLeagues;
 
-  return {
-    currentLeagueId: "gold-freud",
-    season: {
-      name: "Seasonal Leagues",
-      endsIn: "12 days",
-      userProgressLabel: "257 points away from Einstein's League",
-    },
-    leagues: normalizedLeagues,
-    leaderboards,
-  };
+    const leaderboards: Record<string, LeaderboardEntry[]> = {};
+    activeLeagues.forEach((l) => {
+      leaderboards[l.id] = [];
+    });
+
+    const allProfiles = Array.from(usersMap.values());
+
+    allProfiles.forEach((profile) => {
+      // Find matching entry or assign tier based on points
+      const dbEntry = (dbEntries || []).find((e: any) => e.username === profile.username);
+      let targetLeagueId = dbEntry?.league_id;
+
+      if (!targetLeagueId || !leaderboards[targetLeagueId]) {
+        // Dynamic assignment based on cumulative points
+        if (profile.points >= 800) targetLeagueId = "diamond";
+        else if (profile.points >= 500) targetLeagueId = "ruby";
+        else if (profile.points >= 300) targetLeagueId = "sapphire";
+        else if (profile.points >= 150) targetLeagueId = "gold";
+        else if (profile.points >= 50) targetLeagueId = "silver";
+        else targetLeagueId = "bronze";
+      }
+
+      const totalCollabs = collabMap.get(profile.username) || Math.max(1, Math.floor(profile.points / 3));
+
+      leaderboards[targetLeagueId].push({
+        username: profile.username,
+        displayName: profile.name || profile.username,
+        image: profile.image,
+        score: profile.points,
+        collaborations: totalCollabs,
+      });
+    });
+
+    // Sort leaderboards and flag promotion/demotion zones
+    for (const leagueId in leaderboards) {
+      const list = leaderboards[leagueId];
+      list.sort((a, b) => b.score - a.score);
+
+      const totalCount = list.length;
+      const promoCutoff = Math.max(1, Math.ceil(totalCount * 0.2));
+      const demoCutoff = Math.floor(totalCount * 0.8);
+
+      list.forEach((entry, idx) => {
+        // Highest tier (diamond) has no promotion; lowest tier (bronze) has no demotion
+        entry.isPromotionZone = leagueId !== "diamond" && idx < promoCutoff;
+        entry.isDemotionZone = leagueId !== "bronze" && idx >= demoCutoff && totalCount >= 3;
+      });
+    }
+
+    return {
+      currentLeagueId: "gold",
+      season: {
+        name: "Weekly League Season #14",
+        endsIn: "3 days 14 hours",
+        userProgressLabel: "Top 20% promote to next league • Bottom 20% demote",
+      },
+      leagues: activeLeagues,
+      leaderboards,
+    };
+  } catch (err: any) {
+    console.warn("Error fetching leagues data, returning defaults:", err?.message);
+    return {
+      currentLeagueId: "gold",
+      season: {
+        name: "Weekly League Season #14",
+        endsIn: "3 days 14 hours",
+        userProgressLabel: "Top 20% promote to next league",
+      },
+      leagues: defaultLeagues,
+      leaderboards: {} as Record<string, LeaderboardEntry[]>,
+    };
+  }
 }

@@ -95,7 +95,7 @@ export default async function CommunityPage({
               <div>
                 <h1 className="text-6xl font-light">{community.name}</h1>
                 <p className="text-white/60">
-                  Managed by @{community.manager}
+                  Managed by <a className="underline font-medium hover:text-flower-blue" href={`/profile/${community.manager.toLowerCase()}`}>@{community.manager}</a>
                 </p>
               </div>
 

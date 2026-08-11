@@ -56,6 +56,7 @@ export async function getUser() {
 
   return {
     id: profile.username,
+    username: profile.username,
     image: profile.image,
     name: profile.name,
     email: profile.email,

@@ -46,38 +46,49 @@ export default async function Dashboard() {
                     What's up, {user.name}
                 </h1>
                 {leagueHighlight && (
-                <p className="text-white/80 pb-4 text-sm sm:text-base">
-                    {leagueHighlight.aheadOf ? (
-                        <>
-                            You&apos;re currently <span className="font-bold text-white">{leagueHighlight.aheadOf.diff}</span> points ahead of{" "}
-                            <a className="underline font-bold text-white hover:text-flower-blue" href={`/profile/${leagueHighlight.aheadOf.username}`}>
-                                {leagueHighlight.aheadOf.displayName}
-                            </a>{" "}
-                            in the{" "}
-                            <a className="underline font-bold text-white hover:text-flower-blue" href="/leagues">
-                                {leagueHighlight.leagueName} League
-                            </a>
-                        </>
+                  <p className="text-white/80 pb-4 text-sm sm:text-base">
+                    {leagueHighlight.pointsToNextTier > 0 ? (
+                      <>
+                        You&apos;re currently <span className="font-bold text-white">{leagueHighlight.pointsToNextTier}</span> points away from{" "}
+                        <a className="underline font-bold text-white hover:text-flower-blue" href="/leagues">
+                          {leagueHighlight.nextLeagueName} League
+                        </a>{" "}
+                        in the{" "}
+                        <a className="underline font-bold text-white hover:text-flower-blue" href="/leagues">
+                          {leagueHighlight.leagueName} League
+                        </a>
+                      </>
+                    ) : leagueHighlight.aheadOf ? (
+                      <>
+                        You&apos;re currently <span className="font-bold text-white">{leagueHighlight.aheadOf.diff}</span> points ahead of{" "}
+                        <a className="underline font-bold text-white hover:text-flower-blue" href={`/profile/${leagueHighlight.aheadOf.username}`}>
+                          {leagueHighlight.aheadOf.displayName}
+                        </a>{" "}
+                        in the{" "}
+                        <a className="underline font-bold text-white hover:text-flower-blue" href="/leagues">
+                          {leagueHighlight.leagueName} League
+                        </a>
+                      </>
                     ) : leagueHighlight.behind ? (
-                        <>
-                            You&apos;re <span className="font-bold text-white">{leagueHighlight.behind.diff}</span> points behind{" "}
-                            <a className="underline font-bold text-white hover:text-flower-blue" href={`/profile/${leagueHighlight.behind.username}`}>
-                                {leagueHighlight.behind.displayName}
-                            </a>{" "}
-                            in the{" "}
-                            <a className="underline font-bold text-white hover:text-flower-blue" href="/leagues">
-                                {leagueHighlight.leagueName} League
-                            </a>
-                        </>
+                      <>
+                        You&apos;re <span className="font-bold text-white">{leagueHighlight.behind.diff}</span> points behind{" "}
+                        <a className="underline font-bold text-white hover:text-flower-blue" href={`/profile/${leagueHighlight.behind.username}`}>
+                          {leagueHighlight.behind.displayName}
+                        </a>{" "}
+                        in the{" "}
+                        <a className="underline font-bold text-white hover:text-flower-blue" href="/leagues">
+                          {leagueHighlight.leagueName} League
+                        </a>
+                      </>
                     ) : (
-                        <>
-                            You&apos;re leading the{" "}
-                            <a className="underline font-bold text-white hover:text-flower-blue" href="/leagues">
-                                {leagueHighlight.leagueName} League
-                            </a>
-                        </>
+                      <>
+                        You&apos;re leading the{" "}
+                        <a className="underline font-bold text-white hover:text-flower-blue" href="/leagues">
+                          {leagueHighlight.leagueName} League
+                        </a>
+                      </>
                     )}
-                </p>
+                  </p>
                 )}
                 <a href="/communities/french/forum" className="block max-w-md">
                     <div className="bg-[linear-gradient(rgba(0,0,0,0.5),rgba(0,0,0,0.5)),url(/banners/french-banner.jpg)] bg-cover bg-center h-40 w-full rounded-2xl p-4 cursor-pointer transition-transform hover:scale-[1.02]">
@@ -97,7 +108,7 @@ export default async function Dashboard() {
                 </a>
             </div>
             <div className="shrink-0 self-center lg:self-auto">
-                <Activity userImage={user.image} activities={recentActivities} />
+                <Activity userImage={user.image} activities={recentActivities} progressPercent={leagueHighlight?.progressPercent} />
             </div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
