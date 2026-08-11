@@ -186,36 +186,71 @@ export default function PostClient({
           throw new Error(initData?.error || "Failed to initiate Google Drive upload session.");
         }
 
-        // Step 2: Upload file directly from browser to Google Drive (Bypasses Vercel 4.5MB limit!)
-        const driveUploadRes = await fetch(initData.uploadUrl, {
-          method: "PUT",
-          headers: {
-            "Content-Type": attachmentFile.type || "application/octet-stream",
-          },
-          body: attachmentFile,
-        });
+        // Step 2: Upload file directly from browser to Google Drive with Authorization token
+        try {
+          const driveUploadRes = await fetch(initData.uploadUrl, {
+            method: "PUT",
+            headers: {
+              Authorization: `Bearer ${initData.accessToken}`,
+              "Content-Type": attachmentFile.type || "application/octet-stream",
+            },
+            body: attachmentFile,
+          });
 
-        if (!driveUploadRes.ok) {
-          const driveErrText = await driveUploadRes.text();
-          throw new Error(`Direct Google Drive Upload Failed (${driveUploadRes.status}): ${driveErrText.slice(0, 100)}`);
+          if (!driveUploadRes.ok) {
+            const driveErrText = await driveUploadRes.text();
+            throw new Error(`Direct Google Drive Upload Failed (${driveUploadRes.status}): ${driveErrText.slice(0, 100)}`);
+          }
+
+          const driveData = await driveUploadRes.json();
+          const fileId = driveData.id;
+
+          if (!fileId) {
+            throw new Error("Google Drive upload completed but returned no file ID.");
+          }
+
+          // Step 3: Set public view permissions and get CDN URL
+          const completeRes = await fetch("/api/gdrive/upload-complete", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ fileId }),
+          });
+
+          const completeData = await completeRes.json();
+          finalAttachmentUrl = completeData?.attachmentUrl || `https://lh3.googleusercontent.com/d/${fileId}`;
+        } catch (directDriveErr: any) {
+          console.warn("Direct Google Drive upload failed/CORS, falling back to server uploader:", directDriveErr?.message);
+          // Fallback: Send binary FormData to server API route
+          const formData = new FormData();
+          formData.append("postId", postId);
+          formData.append("content", reply.trim());
+          formData.append("file", attachmentFile);
+
+          const fallbackRes = await fetch("/api/comments", {
+            method: "POST",
+            body: formData,
+          });
+
+          const fallbackText = await fallbackRes.text();
+          let fallbackData;
+          try {
+            fallbackData = JSON.parse(fallbackText);
+          } catch {
+            throw new Error(`Server Upload Error (${fallbackRes.status}): ${fallbackText.replace(/<[^>]*>?/gm, "").slice(0, 150)}`);
+          }
+
+          if (!fallbackRes.ok) {
+            throw new Error(fallbackData?.error || `Upload failed (${fallbackRes.status})`);
+          }
+
+          const nextComment: Comment = fallbackData.comment;
+          setCommentsList((prev) => [nextComment, ...prev]);
+          setReply("");
+          setAttachmentUrl("");
+          setAttachmentName("");
+          setAttachmentFile(null);
+          return;
         }
-
-        const driveData = await driveUploadRes.json();
-        const fileId = driveData.id;
-
-        if (!fileId) {
-          throw new Error("Google Drive upload completed but returned no file ID.");
-        }
-
-        // Step 3: Set public view permissions and get CDN URL
-        const completeRes = await fetch("/api/gdrive/upload-complete", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ fileId }),
-        });
-
-        const completeData = await completeRes.json();
-        finalAttachmentUrl = completeData?.attachmentUrl || `https://lh3.googleusercontent.com/d/${fileId}`;
       }
 
       // Step 4: Post comment with Google Drive CDN URL

@@ -75,7 +75,7 @@ export async function POST(request: Request) {
       );
     }
 
-    return NextResponse.json({ uploadUrl });
+    return NextResponse.json({ uploadUrl, accessToken });
   } catch (err: any) {
     return NextResponse.json(
       { error: `Google Drive Auth Error: ${err?.message || "Authentication failed"}` },
