@@ -67,6 +67,11 @@ export async function updateProfile(profile: ProfileData) {
     .eq("auth_user_id", user.id);
 
   if (error) {
+    if (error.code === "23503" || error.message.includes("foreign key constraint")) {
+      return {
+        error: "Database constraint error: Please ensure ON UPDATE CASCADE is set on foreign keys in Supabase SQL Editor.",
+      };
+    }
     return {
       error: error.message,
     };
