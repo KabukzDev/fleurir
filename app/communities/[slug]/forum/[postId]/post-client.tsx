@@ -46,6 +46,9 @@ export default function PostClient({
   const [attachmentUrl, setAttachmentUrl] = useState("");
   const [attachmentName, setAttachmentName] = useState("");
   const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [isUploadingFile, setIsUploadingFile] = useState(false);
+  const [uploadError, setUploadError] = useState("");
   const [error, setError] = useState("");
   const [hasNewCommentsNotice, setHasNewCommentsNotice] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -54,12 +57,81 @@ export default function PostClient({
   const canDeletePost = currentUser && (currentUser.username === post?.author || currentUser.role === "administrator");
   const canSolvePost = currentUser && (currentUser.username === post?.author || currentUser.role === "mentor" || currentUser.role === "administrator");
 
+  const startDirectFileUpload = async (file: File) => {
+    setError("");
+    setUploadError("");
+    setUploadProgress(0);
+    setIsUploadingFile(true);
+    setAttachmentName(file.name);
+    setAttachmentFile(file);
+
+    try {
+      // Step 1: Request pre-signed upload URL from API (lightweight ~100B JSON body)
+      const presignRes = await fetch("/api/storage/presigned-url", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fileName: file.name,
+          fileType: file.type || "application/octet-stream",
+          fileSize: file.size,
+        }),
+      });
+
+      const presignText = await presignRes.text();
+      let presignData;
+      try {
+        presignData = JSON.parse(presignText);
+      } catch {
+        throw new Error(`Pre-signed URL Error (${presignRes.status}): ${presignText.slice(0, 100)}`);
+      }
+
+      if (!presignRes.ok || !presignData?.signedUrl) {
+        throw new Error(presignData?.error || "Failed to generate pre-signed upload URL.");
+      }
+
+      const { signedUrl, publicUrl } = presignData;
+
+      // Step 2: Upload file directly from browser to Cloud Storage (0 Bytes pass through Vercel serverless limits!)
+      await new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open("PUT", signedUrl, true);
+        xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
+
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) {
+            const percent = Math.round((event.loaded / event.total) * 100);
+            setUploadProgress(percent);
+          }
+        };
+
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            setUploadProgress(100);
+            setAttachmentUrl(publicUrl);
+            resolve();
+          } else {
+            reject(new Error(`Direct Upload Failed (HTTP ${xhr.status})`));
+          }
+        };
+
+        xhr.onerror = () => reject(new Error("Network connection dropped during file upload. Please retry."));
+        xhr.ontimeout = () => reject(new Error("File upload timed out. Please check your connection."));
+
+        xhr.send(file);
+      });
+    } catch (err: any) {
+      setUploadError(err?.message || "File upload failed.");
+      setUploadProgress(null);
+    } finally {
+      setIsUploadingFile(false);
+    }
+  };
+
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     setError("");
+    setUploadError("");
     const file = e.target.files?.[0];
     if (!file) return;
-
-    const isImage = file.type.startsWith("image/");
 
     // 20MB limit check
     const MAX_FILE_SIZE = 20 * 1024 * 1024;
@@ -69,52 +141,7 @@ export default function PostClient({
       return;
     }
 
-    setAttachmentFile(file);
-    setAttachmentName(file.name);
-
-    if (isImage) {
-      // Compress image using canvas for local preview & data URL fallback
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement("canvas");
-          let width = img.width;
-          let height = img.height;
-          const maxDim = 1600;
-
-          if (width > maxDim || height > maxDim) {
-            if (width > height) {
-              height = Math.round((height * maxDim) / width);
-              width = maxDim;
-            } else {
-              width = Math.round((width * maxDim) / height);
-              height = maxDim;
-            }
-          }
-
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext("2d");
-          if (ctx) {
-            ctx.drawImage(img, 0, 0, width, height);
-            let compressedDataUrl = canvas.toDataURL("image/jpeg", 0.82);
-            compressedDataUrl = compressedDataUrl.replace(";base64,", `;name=${encodeURIComponent(file.name)};base64,`);
-            setAttachmentUrl(compressedDataUrl);
-          } else {
-            setAttachmentUrl(event.target?.result as string);
-          }
-        };
-        img.onerror = () => setError("Failed to process image file.");
-        img.src = event.target?.result as string;
-      };
-      reader.onerror = () => setError("Failed to read image file.");
-      reader.readAsDataURL(file);
-    } else {
-      // Office document file preview (.pdf, .docx, .xlsx, .pptx, etc.)
-      const objectUrl = URL.createObjectURL(file);
-      setAttachmentUrl(objectUrl);
-    }
+    startDirectFileUpload(file);
   };
 
   // Real-time polling for new comments every 4 seconds
@@ -158,126 +185,22 @@ export default function PostClient({
 
     if (!reply.trim()) return;
 
+    if (isUploadingFile) {
+      setError("Please wait for the file upload to complete.");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      let finalAttachmentUrl: string | null = attachmentUrl ? attachmentUrl.trim() : null;
-
-      if (attachmentFile) {
-        // Step 1: Initiate direct Google Drive resumable upload session
-        const initRes = await fetch("/api/gdrive/upload-url", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            fileName: attachmentFile.name,
-            mimeType: attachmentFile.type || "application/octet-stream",
-            fileSize: attachmentFile.size,
-          }),
-        });
-
-        const initText = await initRes.text();
-        let initData;
-        try {
-          initData = JSON.parse(initText);
-        } catch {
-          throw new Error(`Google Drive Session Error (${initRes.status}): ${initText.slice(0, 100)}`);
-        }
-
-        if (!initRes.ok || initData?.fallbackSupabase || !initData?.uploadUrl) {
-          // Fallback to Supabase Cloud Storage if Google Drive personal account quota is restricted
-          const formData = new FormData();
-          formData.append("postId", postId);
-          formData.append("content", reply.trim());
-          formData.append("file", attachmentFile);
-
-          const fallbackRes = await fetch("/api/comments", {
-            method: "POST",
-            body: formData,
-          });
-
-          const fallbackText = await fallbackRes.text();
-          let fallbackData;
-          try {
-            fallbackData = JSON.parse(fallbackText);
-          } catch {
-            throw new Error(`Upload Error (${fallbackRes.status}): ${fallbackText.replace(/<[^>]*>?/gm, "").slice(0, 150)}`);
-          }
-
-          if (!fallbackRes.ok) {
-            throw new Error(fallbackData?.error || `Upload failed (${fallbackRes.status})`);
-          }
-
-          const nextComment: Comment = fallbackData.comment;
-          setCommentsList((prev) => [nextComment, ...prev]);
-          setReply("");
-          setAttachmentUrl("");
-          setAttachmentName("");
-          setAttachmentFile(null);
-          return;
-        }
-
-        // Step 2: Upload file in 1.5MB chunks (guarantees staying far below Vercel's 4.5MB payload limit)
-        const CHUNK_SIZE = Math.floor(1.5 * 1024 * 1024); // 1.5MB chunks
-        let start = 0;
-        let fileId = "";
-
-        while (start < attachmentFile.size) {
-          const end = Math.min(start + CHUNK_SIZE, attachmentFile.size);
-          const chunk = attachmentFile.slice(start, end);
-
-          const chunkFormData = new FormData();
-          chunkFormData.append("uploadUrl", initData.uploadUrl);
-          chunkFormData.append("contentRange", `bytes ${start}-${end - 1}/${attachmentFile.size}`);
-          chunkFormData.append("chunk", chunk, attachmentFile.name);
-
-          const chunkRes = await fetch("/api/gdrive/upload-chunk", {
-            method: "POST",
-            body: chunkFormData,
-          });
-
-          const chunkText = await chunkRes.text();
-          let chunkData;
-          try {
-            chunkData = JSON.parse(chunkText);
-          } catch {
-            throw new Error(`Chunk Upload Error (${chunkRes.status}): ${chunkText.slice(0, 100)}`);
-          }
-
-          if (!chunkRes.ok) {
-            throw new Error(chunkData?.error || `Chunk Upload Failed (${chunkRes.status})`);
-          }
-
-          if (chunkData.fileId) {
-            fileId = chunkData.fileId;
-            break;
-          }
-
-          start = end;
-        }
-
-        if (!fileId) {
-          throw new Error("Google Drive upload completed but returned no file ID.");
-        }
-
-        // Step 3: Set public view permissions and get CDN URL
-        const completeRes = await fetch("/api/gdrive/upload-complete", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ fileId }),
-        });
-
-        const completeData = await completeRes.json();
-        finalAttachmentUrl = completeData?.attachmentUrl || `https://lh3.googleusercontent.com/d/${fileId}`;
-      }
-
-      // Step 4: Post comment with Google Drive CDN URL
+      // Send lightweight comment payload (~150 bytes JSON)
       const response = await fetch("/api/comments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           postId,
           content: reply.trim(),
-          attachmentUrl: finalAttachmentUrl,
+          attachmentUrl: attachmentUrl ? attachmentUrl.trim() : null,
         }),
       });
 
@@ -304,6 +227,7 @@ export default function PostClient({
       setAttachmentUrl("");
       setAttachmentName("");
       setAttachmentFile(null);
+      setUploadProgress(null);
     } catch (err: any) {
       setError(err?.message || "Failed to post reply. Please try again.");
     } finally {
@@ -572,21 +496,54 @@ export default function PostClient({
             )}
           </div>
 
-          {/* Attachment Preview in Form */}
-          {attachmentUrl && (
-            <div className="mt-2 p-3 bg-white/5 border border-white/10 rounded-2xl inline-block max-w-sm relative">
-              {attachmentUrl.startsWith("data:image/") || attachmentUrl.match(/\.(png|jpg|jpeg|gif|webp)(\?.*)?$/i) ? (
-                <img
-                  src={attachmentUrl}
-                  alt="Attachment Preview"
-                  className="max-h-36 rounded-lg object-contain"
-                />
-              ) : (
-                <div className="flex items-center gap-2 text-sm text-flower-blue">
-                  <span className="text-xl">📄</span>
-                  <span className="font-medium truncate max-w-[200px]">{attachmentName || "Attached Document"}</span>
+          {/* Real-time Direct-to-Cloud Upload Progress Bar & Preview */}
+          {(isUploadingFile || (uploadProgress !== null && uploadProgress < 100) || attachmentUrl || uploadError) && (
+            <div className="mt-2 p-3 bg-white/5 border border-white/10 rounded-2xl max-w-sm">
+              {isUploadingFile || (uploadProgress !== null && uploadProgress < 100) ? (
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-xs text-white/80 font-medium">
+                    <span className="truncate max-w-[200px] flex items-center gap-1.5">
+                      <span className="animate-pulse">☁️</span> {attachmentName || "Uploading..."}
+                    </span>
+                    <span className="text-flower-blue font-bold">{uploadProgress || 0}%</span>
+                  </div>
+                  <div className="w-full bg-white/10 rounded-full h-2 overflow-hidden relative">
+                    <div
+                      className="bg-flower-blue h-full transition-all duration-200 rounded-full"
+                      style={{ width: `${uploadProgress || 0}%` }}
+                    />
+                  </div>
                 </div>
-              )}
+              ) : uploadError ? (
+                <div className="flex items-center justify-between gap-2 text-xs">
+                  <span className="text-red-300 font-medium">{uploadError}</span>
+                  {attachmentFile && (
+                    <button
+                      type="button"
+                      onClick={() => startDirectFileUpload(attachmentFile)}
+                      className="bg-white/10 hover:bg-white/20 text-white px-2.5 py-1 rounded-lg transition font-medium"
+                    >
+                      Retry
+                    </button>
+                  )}
+                </div>
+              ) : attachmentUrl ? (
+                <div className="flex items-center justify-between gap-2">
+                  {attachmentUrl.startsWith("data:image/") || attachmentUrl.match(/\.(png|jpg|jpeg|gif|webp)(\?.*)?$/i) ? (
+                    <img
+                      src={attachmentUrl}
+                      alt="Attachment Preview"
+                      className="max-h-36 rounded-lg object-contain"
+                    />
+                  ) : (
+                    <div className="flex items-center gap-2 text-sm text-flower-blue">
+                      <span className="text-xl">📄</span>
+                      <span className="font-medium truncate max-w-[200px]">{attachmentName || "Attached Document"}</span>
+                    </div>
+                  )}
+                  <span className="text-xs text-emerald-400 font-medium flex items-center gap-1">✓ Uploaded</span>
+                </div>
+              ) : null}
             </div>
           )}
 
