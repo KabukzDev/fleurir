@@ -22,7 +22,7 @@ export async function POST(request: Request) {
   privateKey = privateKey.replace(/\\n/g, "\n");
 
   const body = await request.json();
-  const { fileName, mimeType } = body;
+  const { fileName, mimeType, fileSize } = body;
 
   if (!fileName || !mimeType) {
     return NextResponse.json(
@@ -41,16 +41,22 @@ export async function POST(request: Request) {
     const tokens = await auth.authorize();
     const accessToken = tokens.access_token;
 
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json; charset=UTF-8",
+      "X-Upload-Content-Type": mimeType,
+    };
+
+    if (fileSize) {
+      headers["X-Upload-Content-Length"] = fileSize.toString();
+    }
+
     // Request Google Drive API for a direct resumable upload session URL
     const initRes = await fetch(
       "https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&supportsAllDrives=true",
       {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json; charset=UTF-8",
-          "X-Upload-Content-Type": mimeType,
-        },
+        headers,
         body: JSON.stringify({
           name: fileName,
           mimeType,
