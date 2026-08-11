@@ -7,19 +7,28 @@ export async function uploadFileToGoogleDrive(
   fileName: string,
   mimeType: string
 ): Promise<string> {
+  const refreshToken = process.env.GOOGLE_REFRESH_TOKEN;
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+
   const clientEmail = process.env.GOOGLE_CLIENT_EMAIL;
   let privateKey = process.env.GOOGLE_PRIVATE_KEY;
 
-  if (clientEmail && privateKey) {
+  if ((refreshToken && clientId && clientSecret) || (clientEmail && privateKey)) {
     try {
-      // Format private key correctly if escaped
-      privateKey = privateKey.replace(/\\n/g, "\n");
+      let auth: any;
 
-      const auth = new google.auth.JWT({
-        email: clientEmail,
-        key: privateKey,
-        scopes: ["https://www.googleapis.com/auth/drive.file"],
-      });
+      if (refreshToken && clientId && clientSecret) {
+        auth = new google.auth.OAuth2(clientId, clientSecret);
+        auth.setCredentials({ refresh_token: refreshToken });
+      } else if (clientEmail && privateKey) {
+        privateKey = privateKey.replace(/\\n/g, "\n");
+        auth = new google.auth.JWT({
+          email: clientEmail,
+          key: privateKey,
+          scopes: ["https://www.googleapis.com/auth/drive.file"],
+        });
+      }
 
       const drive = google.drive({ version: "v3", auth });
 
