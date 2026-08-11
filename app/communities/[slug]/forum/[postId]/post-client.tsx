@@ -216,8 +216,8 @@ export default function PostClient({
           return;
         }
 
-        // Step 2: Upload file in 3MB chunks (bypasses Vercel 4.5MB limit & Google Drive browser CORS)
-        const CHUNK_SIZE = 3 * 1024 * 1024; // 3MB chunks
+        // Step 2: Upload file in 1.5MB chunks (guarantees staying far below Vercel's 4.5MB payload limit)
+        const CHUNK_SIZE = Math.floor(1.5 * 1024 * 1024); // 1.5MB chunks
         let start = 0;
         let fileId = "";
 
