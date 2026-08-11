@@ -1,6 +1,6 @@
 "use server";
 
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseServerClient, createSupabaseAdminClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 
 type ProfileData = {
@@ -41,7 +41,10 @@ export async function updateProfile(profile: ProfileData) {
     };
   }
 
-  const { data: existingProfile } = await supabase
+  const admin = createSupabaseAdminClient() || supabase;
+
+  // Check if username is taken by another account
+  const { data: existingProfile } = await admin
     .from("profiles")
     .select("auth_user_id")
     .eq("username", username)
@@ -56,7 +59,34 @@ export async function updateProfile(profile: ProfileData) {
     };
   }
 
-  const { error } = await supabase
+  // Fetch current username to handle cascade updates
+  const { data: currentProfile } = await admin
+    .from("profiles")
+    .select("username")
+    .eq("auth_user_id", user.id)
+    .maybeSingle();
+
+  const oldUsername = currentProfile?.username;
+
+  // If changing username, update child tables first using Admin Client
+  if (oldUsername && oldUsername !== username) {
+    try {
+      await Promise.all([
+        admin.from("comments").update({ author_username: username }).eq("author_username", oldUsername),
+        admin.from("posts").update({ author_username: username }).eq("author_username", oldUsername),
+        admin.from("comment_replies").update({ author_username: username }).eq("author_username", oldUsername),
+        admin.from("league_entries").update({ username: username }).eq("username", oldUsername),
+        admin.from("friends").update({ user_username: username }).eq("user_username", oldUsername),
+        admin.from("friends").update({ friend_username: username }).eq("friend_username", oldUsername),
+        admin.from("friend_requests").update({ sender_username: username }).eq("sender_username", oldUsername),
+        admin.from("friend_requests").update({ receiver_username: username }).eq("receiver_username", oldUsername),
+      ]);
+    } catch {
+      // Ignore non-existent optional tables
+    }
+  }
+
+  const { error } = await admin
     .from("profiles")
     .update({
       name: profile.name.trim(),
@@ -67,15 +97,13 @@ export async function updateProfile(profile: ProfileData) {
     .eq("auth_user_id", user.id);
 
   if (error) {
-    if (error.code === "23503" || error.message.includes("foreign key constraint")) {
-      return {
-        error: "Database constraint error: Please ensure ON UPDATE CASCADE is set on foreign keys in Supabase SQL Editor.",
-      };
-    }
     return {
       error: error.message,
     };
   }
+
+  revalidatePath("/settings");
+  revalidatePath(`/profile/${username}`);
 
   return {
     success: true,
