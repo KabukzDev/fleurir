@@ -183,8 +183,37 @@ export default function PostClient({
           throw new Error(`Google Drive Session Error (${initRes.status}): ${initText.slice(0, 100)}`);
         }
 
-        if (!initRes.ok || !initData?.uploadUrl) {
-          throw new Error(initData?.error || "Failed to initiate Google Drive upload session.");
+        if (!initRes.ok || initData?.fallbackSupabase || !initData?.uploadUrl) {
+          // Fallback to Supabase Cloud Storage if Google Drive personal account quota is restricted
+          const formData = new FormData();
+          formData.append("postId", postId);
+          formData.append("content", reply.trim());
+          formData.append("file", attachmentFile);
+
+          const fallbackRes = await fetch("/api/comments", {
+            method: "POST",
+            body: formData,
+          });
+
+          const fallbackText = await fallbackRes.text();
+          let fallbackData;
+          try {
+            fallbackData = JSON.parse(fallbackText);
+          } catch {
+            throw new Error(`Upload Error (${fallbackRes.status}): ${fallbackText.replace(/<[^>]*>?/gm, "").slice(0, 150)}`);
+          }
+
+          if (!fallbackRes.ok) {
+            throw new Error(fallbackData?.error || `Upload failed (${fallbackRes.status})`);
+          }
+
+          const nextComment: Comment = fallbackData.comment;
+          setCommentsList((prev) => [nextComment, ...prev]);
+          setReply("");
+          setAttachmentUrl("");
+          setAttachmentName("");
+          setAttachmentFile(null);
+          return;
         }
 
         // Step 2: Upload file in 3MB chunks (bypasses Vercel 4.5MB limit & Google Drive browser CORS)
