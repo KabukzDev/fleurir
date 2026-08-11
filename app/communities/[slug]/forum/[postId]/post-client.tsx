@@ -161,31 +161,73 @@ export default function PostClient({
     setIsSubmitting(true);
 
     try {
-      let response: Response;
+      let finalAttachmentUrl: string | null = attachmentUrl ? attachmentUrl.trim() : null;
 
       if (attachmentFile) {
-        // Use binary multipart FormData stream to support up to 20MB documents
-        const formData = new FormData();
-        formData.append("postId", postId);
-        formData.append("content", reply.trim());
-        formData.append("file", attachmentFile);
-
-        response = await fetch("/api/comments", {
-          method: "POST",
-          body: formData,
-        });
-      } else {
-        // Use standard JSON payload for text comments / existing links
-        response = await fetch("/api/comments", {
+        // Step 1: Initiate direct Google Drive resumable upload session
+        const initRes = await fetch("/api/gdrive/upload-url", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            postId,
-            content: reply.trim(),
-            attachmentUrl: attachmentUrl ? attachmentUrl.trim() : null,
+            fileName: attachmentFile.name,
+            mimeType: attachmentFile.type || "application/octet-stream",
           }),
         });
+
+        const initText = await initRes.text();
+        let initData;
+        try {
+          initData = JSON.parse(initText);
+        } catch {
+          throw new Error(`Google Drive Session Error (${initRes.status}): ${initText.slice(0, 100)}`);
+        }
+
+        if (!initRes.ok || !initData?.uploadUrl) {
+          throw new Error(initData?.error || "Failed to initiate Google Drive upload session.");
+        }
+
+        // Step 2: Upload file directly from browser to Google Drive (Bypasses Vercel 4.5MB limit!)
+        const driveUploadRes = await fetch(initData.uploadUrl, {
+          method: "PUT",
+          headers: {
+            "Content-Type": attachmentFile.type || "application/octet-stream",
+          },
+          body: attachmentFile,
+        });
+
+        if (!driveUploadRes.ok) {
+          const driveErrText = await driveUploadRes.text();
+          throw new Error(`Direct Google Drive Upload Failed (${driveUploadRes.status}): ${driveErrText.slice(0, 100)}`);
+        }
+
+        const driveData = await driveUploadRes.json();
+        const fileId = driveData.id;
+
+        if (!fileId) {
+          throw new Error("Google Drive upload completed but returned no file ID.");
+        }
+
+        // Step 3: Set public view permissions and get CDN URL
+        const completeRes = await fetch("/api/gdrive/upload-complete", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fileId }),
+        });
+
+        const completeData = await completeRes.json();
+        finalAttachmentUrl = completeData?.attachmentUrl || `https://lh3.googleusercontent.com/d/${fileId}`;
       }
+
+      // Step 4: Post comment with Google Drive CDN URL
+      const response = await fetch("/api/comments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          postId,
+          content: reply.trim(),
+          attachmentUrl: finalAttachmentUrl,
+        }),
+      });
 
       const responseText = await response.text();
       let data;
