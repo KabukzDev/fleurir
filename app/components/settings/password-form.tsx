@@ -2,8 +2,10 @@
 
 import { FormEvent, useState } from "react";
 import { updatePassword } from "@/app/settings/actions";
+import { useTranslation } from "@/lib/i18n/client";
 
 export default function PasswordForm() {
+  const { t } = useTranslation();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
@@ -23,7 +25,7 @@ export default function PasswordForm() {
     }
 
     if (password !== confirmPassword) {
-      setError("Passwords do not match.");
+      setError(t("settings.passwordMismatch"));
       return;
     }
 
@@ -35,12 +37,12 @@ export default function PasswordForm() {
       if (result?.error) {
         setError(result.error);
       } else {
-        setSuccess("Password updated successfully.");
+        setSuccess(t("settings.passwordUpdated"));
         setPassword("");
         setConfirmPassword("");
       }
     } catch {
-      setError("Something went wrong.");
+      setError(t("common.errorGeneric"));
     }
 
     setSaving(false);
@@ -49,41 +51,41 @@ export default function PasswordForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {error && (
-        <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-red-200">
+        <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-red-200 text-sm">
           {error}
         </div>
       )}
 
       {success && (
-        <div className="rounded-xl border border-green-500/20 bg-green-500/10 px-4 py-3 text-green-200">
+        <div className="rounded-xl border border-green-500/20 bg-green-500/10 px-4 py-3 text-green-200 text-sm">
           {success}
         </div>
       )}
 
       <div>
         <label className="mb-2 ml-1 block text-xs font-medium uppercase tracking-wider text-white/70">
-          New Password
+          {t("settings.newPasswordLabel")}
         </label>
 
         <input
           type="password"
           value={password}
           onChange={(event) => setPassword(event.target.value)}
-          placeholder="Enter a new password"
+          placeholder="••••••••"
           className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-flower-blue/50"
         />
       </div>
 
       <div>
         <label className="mb-2 ml-1 block text-xs font-medium uppercase tracking-wider text-white/70">
-          Confirm Password
+          {t("settings.confirmPasswordLabel")}
         </label>
 
         <input
           type="password"
           value={confirmPassword}
           onChange={(event) => setConfirmPassword(event.target.value)}
-          placeholder="Confirm your new password"
+          placeholder="••••••••"
           className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-flower-blue/50"
         />
       </div>
@@ -93,7 +95,7 @@ export default function PasswordForm() {
         disabled={saving}
         className="cursor-pointer rounded-xl bg-flower-blue px-6 py-3 font-medium text-white transition hover:bg-flower-blue/90 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {saving ? "Updating..." : "Update Password"}
+        {saving ? t("common.saving") : t("settings.updatePassword")}
       </button>
     </form>
   );

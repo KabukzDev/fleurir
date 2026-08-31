@@ -2,6 +2,7 @@
 
 import { ChangeEvent, useState } from "react";
 import { uploadAvatar } from "@/app/settings/actions";
+import { useTranslation } from "@/lib/i18n/client";
 
 type AvatarUploadProps = {
   image: string;
@@ -12,6 +13,7 @@ export default function AvatarUpload({
   image,
   name,
 }: AvatarUploadProps) {
+  const { t } = useTranslation();
   const [preview, setPreview] = useState(image);
   const [file, setFile] = useState<File | null>(null);
 
@@ -98,29 +100,29 @@ export default function AvatarUpload({
           <button
             type="button"
             onClick={handleUpload}
-            disabled={!file || uploading}
-            className="cursor-pointer rounded-xl bg-flower-blue px-4 py-2 text-white transition hover:bg-flower-blue/90 disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={uploading || !file}
+            className="cursor-pointer rounded-xl bg-white/10 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {uploading ? "Uploading..." : "Upload Avatar"}
+            {uploading ? t("common.uploading") : t("settings.uploadNewPhoto")}
           </button>
+
+          <p className="text-xs text-white/40">
+            {t("settings.avatarHint")}
+          </p>
         </div>
       </div>
 
       {error && (
-        <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-red-200">
+        <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-red-200 text-sm">
           {error}
         </div>
       )}
 
       {success && (
-        <div className="rounded-xl border border-green-500/20 bg-green-500/10 px-4 py-3 text-green-200">
+        <div className="rounded-xl border border-green-500/20 bg-green-500/10 px-4 py-3 text-green-200 text-sm">
           {success}
         </div>
       )}
-
-      <p className="text-sm text-white/40">
-        PNG, JPG or WEBP. Maximum size: 5MB.
-      </p>
     </div>
   );
 }

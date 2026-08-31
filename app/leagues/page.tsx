@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { getLeaguesData } from "@/lib/demo-social";
 import { getUser } from "@/lib/auth";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { getLocale, getDictionary } from "@/lib/i18n/server";
 
 type LeaguesPageProps = {
   searchParams: Promise<{ league?: string }>;
@@ -42,8 +42,13 @@ const TIER_ICONS: Record<string, string> = {
 };
 
 export default async function LeaguesPage({ searchParams }: LeaguesPageProps) {
-  const { league } = await searchParams;
-  const currentUser = await getUser();
+  const [{ league }, currentUser, locale] = await Promise.all([
+    searchParams,
+    getUser(),
+    getLocale(),
+  ]);
+
+  const dict = getDictionary(locale);
   const leaguesData = await getLeaguesData();
 
   const leagues = leaguesData.leagues as League[];
@@ -77,6 +82,8 @@ export default async function LeaguesPage({ searchParams }: LeaguesPageProps) {
   const userRank = userStandingIndex >= 0 ? userStandingIndex + 1 : null;
   const userEntry = userStandingIndex >= 0 ? leaderboard[userStandingIndex] : null;
 
+  const localizedTierName = dict.leagues.tiers[selectedLeague.id as keyof typeof dict.leagues.tiers] || selectedLeague.name;
+
   return (
     <main className="min-h-screen text-white px-4 py-8 max-w-6xl mx-auto space-y-8">
       {/* Header & Seasonal Banner */}
@@ -91,18 +98,18 @@ export default async function LeaguesPage({ searchParams }: LeaguesPageProps) {
             <div className="flex items-center gap-3">
               <span className="text-3xl">{TIER_ICONS[selectedLeague.id] || "🏆"}</span>
               <h1 className="text-3xl md:text-4xl tracking-tight">
-                {selectedLeague.tier} League
+                {locale === "es" ? `Liga ${selectedLeague.tier}` : `${selectedLeague.tier} League`}
               </h1>
             </div>
             <p className="text-white/60 text-sm mt-1">
-              {selectedLeague.name} • Top 20% promote to the next tier at season end
+              {localizedTierName} • {locale === "es" ? "El mejor 20% asciende a la siguiente categoría al finalizar la temporada" : "Top 20% promote to the next tier at season end"}
             </p>
           </div>
 
           <div className="bg-white/5 border border-white/10 px-4 py-2.5 rounded-2xl flex items-center gap-3 w-fit">
             <span className="text-xl">⏱️</span>
             <div>
-              <p className="text-xs text-white/50 font-medium">Season Reset</p>
+              <p className="text-xs text-white/50 font-medium">{dict.leagues.seasonReset}</p>
               <p className="text-sm font-semibold text-flower-blue">
                 {leaguesData.season.endsIn}
               </p>
@@ -113,7 +120,7 @@ export default async function LeaguesPage({ searchParams }: LeaguesPageProps) {
         {/* Stepper League Navigation Bar (Bronze ➔ Diamond) */}
         <div className="mt-6">
           <p className="text-xs font-semibold uppercase tracking-wider text-white/40 mb-3">
-            League Ladder Progression
+            {dict.leagues.ladderProgression}
           </p>
 
           <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
@@ -136,7 +143,7 @@ export default async function LeaguesPage({ searchParams }: LeaguesPageProps) {
                 >
                   {isUserTier && (
                     <span className="absolute -top-2 bg-flower-blue text-[10px] uppercase font-extrabold px-2 py-0.5 rounded-full text-black tracking-wider shadow">
-                      You
+                      {dict.common.you}
                     </span>
                   )}
                   <span className="text-2xl mb-1">{TIER_ICONS[item.id] || "🏆"}</span>
@@ -147,7 +154,7 @@ export default async function LeaguesPage({ searchParams }: LeaguesPageProps) {
                     {item.tier}
                   </span>
                   <span className="text-[10px] text-white/40 font-medium">
-                    Tier {index + 1}
+                    {locale === "es" ? `Nivel ${index + 1}` : `Tier ${index + 1}`}
                   </span>
                 </Link>
               );
@@ -163,24 +170,26 @@ export default async function LeaguesPage({ searchParams }: LeaguesPageProps) {
                 #{userRank}
               </div>
               <div>
-                <p className="font-semibold text-sm">Standing in {selectedLeague.tier} League</p>
+                <p className="font-semibold text-sm">
+                  {locale === "es" ? `Tu posición en la Liga ${selectedLeague.tier}` : `Standing in ${selectedLeague.tier} League`}
+                </p>
                 <p className="text-xs text-white/50">
                   {userEntry.isPromotionZone
-                    ? "Currently in Promotion Zone! Keep it up to advance."
+                    ? dict.leagues.standingPromotion
                     : userEntry.isDemotionZone
-                    ? "Currently in Demotion Zone! Earn points to avoid dropping down."
-                    : "Safe Zone - You will stay in this league."}
+                    ? dict.leagues.standingDemotion
+                    : dict.leagues.standingSafe}
                 </p>
               </div>
             </div>
 
             <div className="flex items-center gap-6 text-center sm:text-right">
               <div>
-                <p className="text-xs text-white/40 font-medium">Total Points</p>
-                <p className="text-base font-bold text-flower-blue">{userEntry.score} pts</p>
+                <p className="text-xs text-white/40 font-medium">{dict.leagues.totalPointsHeader}</p>
+                <p className="text-base font-bold text-flower-blue">{userEntry.score} {dict.common.pts}</p>
               </div>
               <div>
-                <p className="text-xs text-white/40 font-medium">Collaborations</p>
+                <p className="text-xs text-white/40 font-medium">{dict.leagues.collaborationsHeader}</p>
                 <p className="text-base font-bold text-emerald-400">{userEntry.collaborations}</p>
               </div>
             </div>
@@ -192,23 +201,22 @@ export default async function LeaguesPage({ searchParams }: LeaguesPageProps) {
       <section className="bg-white/5 rounded-xl overflow-hidden backdrop-blur-xl shadow-xl">
         {/* Table Header Row */}
         <div className="grid grid-cols-[60px_1fr_120px_140px] items-center px-6 py-4 border-b border-white/10 bg-white/5 text-xs uppercase font-bold tracking-wider text-white/50">
-          <span className="text-center">Rank</span>
-          <span>User</span>
-          <span className="text-center">Total Points</span>
-          <span className="text-center">Collaborations</span>
+          <span className="text-center">{dict.leagues.rankHeader}</span>
+          <span>{dict.leagues.userHeader}</span>
+          <span className="text-center">{dict.leagues.totalPointsHeader}</span>
+          <span className="text-center">{dict.leagues.collaborationsHeader}</span>
         </div>
 
         {/* Leaderboard Rows */}
         <div className="divide-y divide-white/5">
           {leaderboard.length === 0 ? (
             <div className="px-6 py-12 text-center text-white/40">
-              No participants in this league yet. Be the first to join!
+              {dict.leagues.emptyLeague}
             </div>
           ) : (
             leaderboard.map((entry, index) => {
               const rank = index + 1;
               const isCurrentUser = currentUser?.username === entry.username;
-              const isTop3 = rank <= 3;
               const isPromo = entry.isPromotionZone;
               const isDemo = entry.isDemotionZone;
 
@@ -271,17 +279,17 @@ export default async function LeaguesPage({ searchParams }: LeaguesPageProps) {
                         </p>
                         {isCurrentUser && (
                           <span className="bg-flower-blue/30 text-flower-blue text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
-                            You
+                            {dict.common.you}
                           </span>
                         )}
                         {isPromo && (
                           <span className="hidden md:inline-flex bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider items-center gap-1">
-                            Promotion Zone
+                            {dict.leagues.promotionZonePill}
                           </span>
                         )}
                         {isDemo && (
                           <span className="hidden md:inline-flex bg-red-500/20 text-red-300 border border-red-500/30 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider items-center gap-1">
-                            Demotion Zone
+                            {dict.leagues.demotionZonePill}
                           </span>
                         )}
                       </div>
@@ -294,14 +302,14 @@ export default async function LeaguesPage({ searchParams }: LeaguesPageProps) {
                   {/* Column 2: Total Points */}
                   <div className="text-center">
                     <span className="inline-block bg-white/10 border border-white/10 px-3 py-1.5 rounded-xl font-bold text-sm text-flower-blue">
-                      {entry.score.toLocaleString()} pts
+                      {entry.score.toLocaleString()} {dict.common.pts}
                     </span>
                   </div>
 
                   {/* Column 3: Total Collaborations */}
                   <div className="text-center">
                     <span className="inline-block bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-xl font-bold text-sm text-emerald-400">
-                      {entry.collaborations.toLocaleString()} collabs
+                      {entry.collaborations.toLocaleString()} {dict.common.collabs}
                     </span>
                   </div>
                 </div>

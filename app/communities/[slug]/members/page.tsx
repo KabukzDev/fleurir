@@ -1,20 +1,26 @@
 import Image from "next/image";
 import Link from "next/link";
 import { getCommunity, getCommunityMembers } from "@/lib/demo-social";
+import { getLocale, getDictionary } from "@/lib/i18n/server";
 
 type MembersPageProps = {
   params: Promise<{ slug: string }>;
 };
 
 export default async function MembersPage({ params }: MembersPageProps) {
-  const { slug } = await params;
+  const [{ slug }, locale] = await Promise.all([
+    params,
+    getLocale(),
+  ]);
+
+  const dict = getDictionary(locale);
   const [community, members] = await Promise.all([
     getCommunity(slug),
     getCommunityMembers(slug),
   ]);
 
   if (!community) {
-    return <main className="min-h-screen text-white p-10">Community not found</main>;
+    return <main className="min-h-screen text-white p-10">{locale === "es" ? "Comunidad no encontrada" : "Community not found"}</main>;
   }
 
   return (
@@ -36,14 +42,13 @@ export default async function MembersPage({ params }: MembersPageProps) {
                 href={`/communities/${slug}`}
                 className="text-white/50 hover:text-white"
               >
-                ← Back to {community.name}
+                ← {locale === "es" ? `Volver a ${community.name}` : `Back to ${community.name}`}
               </Link>
               <h1 className="text-5xl font-light mt-3">
-                {community.name} members
+                {locale === "es" ? `Miembros de ${community.name}` : `${community.name} members`}
               </h1>
               <p className="text-white/55 mt-2 max-w-2xl">
-                Members are derived from this community's manager, post authors,
-                commenters, and reply authors.
+                {locale === "es" ? "Miembros que participan en publicaciones, comentarios y respuestas de esta comunidad." : "Members are derived from this community's manager, post authors, commenters, and reply authors."}
               </p>
             </div>
 
@@ -52,13 +57,13 @@ export default async function MembersPage({ params }: MembersPageProps) {
                 href={`/communities/${slug}/forum`}
                 className="px-4 py-2 bg-white/5 rounded-xl hover:bg-white/10"
               >
-                Open forum
+                {locale === "es" ? "Abrir foro" : "Open forum"}
               </Link>
               <Link
                 href={`/communities/${slug}/forum/ask?type=discussion`}
                 className="px-4 py-2 bg-flower-blue rounded-xl hover:bg-flower-blue/90"
               >
-                Start discussion
+                {dict.forum.newDiscussionTitle}
               </Link>
             </div>
           </div>
@@ -66,17 +71,17 @@ export default async function MembersPage({ params }: MembersPageProps) {
 
         <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-white/5 rounded-2xl p-5">
-            <p className="text-white/50">Active members</p>
+            <p className="text-white/50">{dict.discover.activeMembers}</p>
             <p className="text-4xl font-light mt-2">{members.length}</p>
           </div>
           <div className="bg-white/5 rounded-2xl p-5">
-            <p className="text-white/50">Online now</p>
+            <p className="text-white/50">{dict.common.online}</p>
             <p className="text-4xl font-light mt-2">
               {members.filter((member) => member.isOnline).length}
             </p>
           </div>
           <div className="bg-white/5 rounded-2xl p-5">
-            <p className="text-white/50">Thread contributions</p>
+            <p className="text-white/50">{dict.communities.contributions}</p>
             <p className="text-4xl font-light mt-2">
               {members.reduce((total, member) => total + member.contributions, 0)}
             </p>
@@ -98,12 +103,7 @@ export default async function MembersPage({ params }: MembersPageProps) {
                     src={member.image}
                     alt={member.name}
                     fill
-                    className="rounded-2xl object-cover"
-                  />
-                  <span
-                    className={`absolute -right-1 -bottom-1 h-4 w-4 rounded-full border-2 border-mist-950 ${
-                      member.isOnline ? "bg-green-400" : "bg-white/25"
-                    }`}
+                    className="rounded-full object-cover"
                   />
                 </Link>
 
@@ -112,44 +112,28 @@ export default async function MembersPage({ params }: MembersPageProps) {
                     <div>
                       <Link
                         href={`/profile/${member.username}`}
-                        className="text-xl hover:underline"
+                        className="text-2xl leading-tight hover:underline"
                       >
                         {member.name}
                       </Link>
                       <p className="text-white/50">@{member.username}</p>
                     </div>
-                    <span className="capitalize text-xs bg-white/5 px-2 py-1 rounded-lg">
-                      {member.username === community.manager
-                        ? "manager"
-                        : member.role}
+
+                    <span className="rounded-lg bg-white/5 px-2 py-1 text-sm capitalize">
+                      {member.role}
                     </span>
                   </div>
 
-                  <p className="mt-3 text-white/75">{member.bio}</p>
+                  <p className="mt-3 text-white/70">{member.bio}</p>
 
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    {member.interests.slice(0, 4).map((interest) => (
-                      <span
-                        key={interest}
-                        className="text-xs px-2 py-1 bg-white/5 rounded-lg"
-                      >
-                        {interest}
-                      </span>
-                    ))}
-                  </div>
-
-                  <div className="mt-4 grid grid-cols-3 gap-2 text-sm">
+                  <div className="grid grid-cols-2 gap-2 mt-4 text-sm">
                     <div className="bg-mist-950/60 rounded-xl px-3 py-2">
-                      <p className="text-white/45">Points</p>
+                      <p className="text-white/45">{dict.common.points}</p>
                       <p>{member.points}</p>
                     </div>
                     <div className="bg-mist-950/60 rounded-xl px-3 py-2">
-                      <p className="text-white/45">Posts</p>
+                      <p className="text-white/45">{dict.communities.contributions}</p>
                       <p>{member.contributions}</p>
-                    </div>
-                    <div className="bg-mist-950/60 rounded-xl px-3 py-2">
-                      <p className="text-white/45">Status</p>
-                      <p>{member.isOnline ? "Online" : "Away"}</p>
                     </div>
                   </div>
                 </div>

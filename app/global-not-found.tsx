@@ -13,10 +13,11 @@ export const metadata: Metadata = {
 export default function GlobalNotFound() {
   return (
     <html lang="en">
-      <body className={`${inter.className} antialiased bg-mist-950 flex flex-col items-center justify-center min-h-screen text-center gap-4`}>
-        <h1 className="text-5xl text-flower-blue">The thing you're looking for does not exist.</h1>
-        <a href="/" className="text-xl rounded-md px-6 py-1 bg-flower-blue text-white transition">
-          Go back to Fleurir
+      <body className={`${inter.className} antialiased bg-mist-950 flex flex-col items-center justify-center min-h-screen text-center gap-4 px-4`}>
+        <h1 className="text-4xl sm:text-5xl text-flower-blue font-light">The page you are looking for does not exist.</h1>
+        <p className="text-white/60 text-lg">La página que buscas no existe.</p>
+        <a href="/" className="text-lg rounded-xl px-6 py-2 bg-flower-blue text-white transition hover:bg-flower-blue/90 font-medium mt-4 cursor-pointer">
+          Go back to Fleurir / Volver a Fleurir
         </a>
       </body>
     </html>

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { useTranslation } from "@/lib/i18n/client";
 
 type Reply = {
   id: string | number;
@@ -46,8 +47,8 @@ export default function ForumClient({
   slug,
   communityName,
   initialPosts,
-  currentUser,
 }: ForumClientProps) {
+  const { t, locale } = useTranslation();
   const [query, setQuery] = useState("");
   const [solvedOnly, setSolvedOnly] = useState(false);
   const [sortMode, setSortMode] = useState<"latest" | "top">("latest");
@@ -103,23 +104,23 @@ export default function ForumClient({
       <div className="max-w-7xl mx-auto flex gap-6">
         <section className="flex-1 space-y-4">
           <div className="bg-white/5 rounded-3xl p-6">
-            <h1 className="text-4xl font-light">{communityName} Forum</h1>
+            <h1 className="text-4xl font-light">{locale === "es" ? `Foro de ${communityName}` : `${communityName} Forum`}</h1>
             <p className="text-white/50 mt-2">
-              Ask questions, solve doubts, and discuss with your peers.
+              {locale === "es" ? "Haz preguntas, resuelve dudas y debate con tus compañeros." : "Ask questions, solve doubts, and discuss with your peers."}
             </p>
 
             <div className="flex gap-3 mt-4">
               <Link
-                className="bg-flower-blue px-4 py-2 rounded-xl"
+                className="bg-flower-blue px-4 py-2 rounded-xl text-white font-medium hover:bg-flower-blue/90 cursor-pointer"
                 href={`/communities/${slug}/forum/ask?type=question`}
               >
-                Ask Question
+                {t("communities.askQuestion")}
               </Link>
               <Link
-                className="border border-white/10 px-4 py-2 rounded-xl"
+                className="border border-white/10 px-4 py-2 rounded-xl text-white hover:bg-white/10 cursor-pointer"
                 href={`/communities/${slug}/forum/ask?type=discussion`}
               >
-                Start Discussion
+                {t("forum.newDiscussionTitle")}
               </Link>
             </div>
           </div>
@@ -128,8 +129,8 @@ export default function ForumClient({
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search posts..."
-              className="flex-1 bg-white/5 px-4 py-3 rounded-xl outline-none"
+              placeholder={t("communities.searchForum")}
+              className="flex-1 bg-white/5 px-4 py-3 rounded-xl outline-none border border-white/5 placeholder:text-white/30"
             />
 
             <button
@@ -140,7 +141,7 @@ export default function ForumClient({
               }
               className="bg-white/5 px-4 rounded-xl hover:bg-white/10 cursor-pointer"
             >
-              {sortMode === "latest" ? "Latest" : "Top"}
+              {sortMode === "latest" ? (locale === "es" ? "Recientes" : "Latest") : (locale === "es" ? "Destacados" : "Top")}
             </button>
 
             <button
@@ -149,7 +150,7 @@ export default function ForumClient({
                 solvedOnly ? "bg-green-500/25 text-green-200" : "bg-white/5"
               }`}
             >
-              Solved
+              {t("communities.solvedFilter")}
             </button>
           </div>
 
@@ -164,7 +165,7 @@ export default function ForumClient({
                   <h2 className="text-xl">{post.title}</h2>
 
                   <p className="text-white/50 text-sm mt-1">
-                    by @{post.author}
+                    {locale === "es" ? "por" : "by"} @{post.author}
                   </p>
 
                   <div className="flex gap-2 mt-3 flex-wrap">
@@ -181,10 +182,10 @@ export default function ForumClient({
 
                 <div className="text-right space-y-2 shrink-0">
                   <p>{post.upvotes} ↑</p>
-                  <p>{post.comments.length} comments</p>
+                  <p>{post.comments.length} {t("common.comments")}</p>
 
                   {post.solved && (
-                    <span className="text-green-400 text-sm">Solved ✓</span>
+                    <span className="text-green-400 text-sm">{t("common.solved")} ✓</span>
                   )}
                 </div>
               </div>
@@ -193,28 +194,28 @@ export default function ForumClient({
 
           {posts.length === 0 && (
             <div className="bg-white/5 rounded-2xl p-8 text-center text-white/50">
-              No posts match that filter yet.
+              {t("communities.noPosts")}
             </div>
           )}
         </section>
 
         <aside className="w-80 space-y-4">
           <div className="bg-white/5 rounded-2xl p-4">
-            <h3 className="text-lg">Community Stats</h3>
-            <p className="text-white/50 mt-2">{posts.length} visible posts</p>
+            <h3 className="text-lg">{locale === "es" ? "Estadísticas de la Comunidad" : "Community Stats"}</h3>
+            <p className="text-white/50 mt-2">{posts.length} {locale === "es" ? "publicaciones visibles" : "visible posts"}</p>
             <p className="text-white/50">
-              {posts.filter((post) => post.solved).length} solved threads
+              {posts.filter((post) => post.solved).length} {locale === "es" ? "publicaciones resueltas" : "solved threads"}
             </p>
           </div>
 
           <div className="bg-white/5 rounded-2xl p-4">
             <div className="flex items-center justify-between gap-3">
-              <h3 className="text-lg">Top collaborators</h3>
+              <h3 className="text-lg">{locale === "es" ? "Principales colaboradores" : "Top collaborators"}</h3>
               <Link
                 href={`/communities/${slug}/members`}
                 className="text-sm text-flower-blue hover:underline"
               >
-                View all
+                {locale === "es" ? "Ver todos" : "View all"}
               </Link>
             </div>
             <ul className="mt-2 space-y-2 text-white/60">

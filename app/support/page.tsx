@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useTranslation } from "@/lib/i18n/client";
 
 export default function SupportPage() {
+  const { t, locale } = useTranslation();
   const [searchQuery, setSearchQuery] = useState("");
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [formSubmitted, setFormSubmitted] = useState(false);
@@ -15,7 +17,44 @@ export default function SupportPage() {
     message: "",
   });
 
-  const categories = [
+  const categories = locale === "es" ? [
+    {
+      id: "account",
+      icon: "person",
+      title: "Cuenta y Perfil",
+      description: "Administra tu información, foto de perfil, contraseña y preferencias.",
+    },
+    {
+      id: "communities",
+      icon: "forum",
+      title: "Comunidades y Foros",
+      description: "Únete a comunidades abiertas, crea publicaciones y adjunta archivos.",
+    },
+    {
+      id: "leagues",
+      icon: "emoji_events",
+      title: "Ligas y Puntos",
+      description: "Aprende sobre el sistema de puntos, respuestas aceptadas y clasificación de ligas.",
+    },
+    {
+      id: "friends",
+      icon: "group",
+      title: "Amigos y Colaboración",
+      description: "Agrega amigos, gestiona conexiones y haz seguimiento de tus colaboraciones.",
+    },
+    {
+      id: "roles",
+      icon: "verified_user",
+      title: "Roles y Permisos",
+      description: "Conoce los privilegios de Miembro, Mentor y Administrador.",
+    },
+    {
+      id: "tech",
+      icon: "handyman",
+      title: "Problemas Técnicos",
+      description: "Soluciona dudas sobre notificaciones en tiempo real y conexión.",
+    },
+  ] : [
     {
       id: "account",
       icon: "person",
@@ -54,7 +93,32 @@ export default function SupportPage() {
     },
   ];
 
-  const faqs = [
+  const faqs = locale === "es" ? [
+    {
+      q: "¿Cómo gano puntos en Fleurir?",
+      a: "Ganas puntos cuando otro usuario vota a favor de tu publicación (+1 punto) o comentario (+1 punto), cuando un mentor o autor marca tu respuesta como solución aceptada (+15 puntos), o cuando tu publicación es resuelta (+15 puntos).",
+    },
+    {
+      q: "¿Cómo funcionan las membresías en comunidades?",
+      a: "Por defecto, las cuentas nuevas comienzan sin comunidades. Puedes explorar comunidades y hacer clic en 'Unirse a la Comunidad' para participar en cualquier espacio.",
+    },
+    {
+      q: "¿Cómo agrego o elimino amigos?",
+      a: "Visita el perfil de cualquier usuario o busca miembros en Descubrir. Haz clic en '+ Agregar Amigo' para sumarlo a tu lista. Puedes gestionar tus amigos en cualquier momento desde la página de Amigos.",
+    },
+    {
+      q: "¿Puedo eliminar mis publicaciones y comentarios?",
+      a: "¡Sí! Los miembros pueden eliminar sus propias publicaciones y comentarios. Los administradores también pueden moderar contenido para mantener una comunidad respetuosa y constructiva.",
+    },
+    {
+      q: "¿Cómo funcionan los archivos adjuntos en comentarios?",
+      a: "Al responder en cualquier debate del foro, haz clic en 'Adjuntar Archivo' para subir imágenes o documentos. Los archivos se procesan de forma segura y se muestran en tu comentario.",
+    },
+    {
+      q: "¿Qué privilegios tienen los Mentores y Administradores?",
+      a: "Los Mentores pueden marcar respuestas como aceptadas y publicaciones como resueltas. Los Administradores pueden realizar todas las acciones de Mentor además de moderar y gestionar la plataforma.",
+    },
+  ] : [
     {
       q: "How do I earn points on Fleurir?",
       a: "You earn points when another user upvotes your post (+1 point) or comment (+1 point), when a mentor or post author marks your answer as accepted (+15 points), or when your post is marked as solved (+15 points).",
@@ -73,7 +137,7 @@ export default function SupportPage() {
     },
     {
       q: "How do comment attachments work?",
-      a: "When posting a reply on any forum post, click '📎 Upload File/Image' to attach a local picture or paste an image URL. Attachments are saved directly to the database and rendered on your comment.",
+      a: "When posting a reply on any forum post, click 'Attach File' to attach a picture or document. Attachments are saved securely and rendered on your comment.",
     },
     {
       q: "What privileges do Mentors and Administrators have?",
@@ -100,13 +164,13 @@ export default function SupportPage() {
         {/* Header Banner */}
         <section className="text-center space-y-4 max-w-3xl mx-auto">
           <span className="px-4 py-1.5 bg-flower-blue/20 text-flower-blue rounded-full text-sm font-medium border border-flower-blue/30">
-            Fleurir Support Center
+            Fleurir {t("support.title")}
           </span>
           <h1 className="text-5xl md:text-6xl font-light tracking-tight">
-            How can we help you?
+            {locale === "es" ? "¿Cómo podemos ayudarte?" : "How can we help you?"}
           </h1>
           <p className="text-white/60 text-lg">
-            Search our help articles, explore FAQs, or submit a request to our community team.
+            {t("support.subtitle")}
           </p>
 
           <div className="relative max-w-xl mx-auto mt-6">
@@ -114,7 +178,7 @@ export default function SupportPage() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search help articles, topics, or FAQs..."
+              placeholder={t("support.searchSupport")}
               className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 pl-12 text-white outline-none focus:border-flower-blue transition placeholder:text-white/30"
             />
             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 icon icon-rounded">
@@ -143,10 +207,10 @@ export default function SupportPage() {
         <section className="bg-white/5 border border-white/5 rounded-3xl p-8 space-y-6">
           <div className="flex items-center justify-between border-b border-white/10 pb-4">
             <div>
-              <h2 className="text-3xl font-light">Frequently Asked Questions</h2>
-              <p className="text-white/50 text-sm mt-1">Quick answers to common Fleurir questions.</p>
+              <h2 className="text-3xl font-light">{locale === "es" ? "Preguntas Frecuentes" : "Frequently Asked Questions"}</h2>
+              <p className="text-white/50 text-sm mt-1">{locale === "es" ? "Respuestas rápidas a dudas comunes." : "Quick answers to common Fleurir questions."}</p>
             </div>
-            <span className="text-white/40 text-sm">{filteredFaqs.length} questions</span>
+            <span className="text-white/40 text-sm">{filteredFaqs.length} {locale === "es" ? "preguntas" : "questions"}</span>
           </div>
 
           <div className="space-y-3">
@@ -157,7 +221,7 @@ export default function SupportPage() {
               >
                 <button
                   onClick={() => setOpenFaq(openFaq === index ? null : index)}
-                  className="w-full px-6 py-4 text-left flex justify-between items-center gap-4 hover:bg-white/5 transition"
+                  className="w-full px-6 py-4 text-left flex justify-between items-center gap-4 hover:bg-white/5 transition cursor-pointer"
                 >
                   <span className="font-medium text-lg">{faq.q}</span>
                   <span className="text-white/40 font-bold text-xl">
@@ -174,7 +238,9 @@ export default function SupportPage() {
             ))}
 
             {filteredFaqs.length === 0 && (
-              <p className="text-white/40 text-center py-6">No matching FAQs found for &quot;{searchQuery}&quot;.</p>
+              <p className="text-white/40 text-center py-6">
+                {locale === "es" ? `No se encontraron preguntas para "${searchQuery}".` : `No matching FAQs found for "${searchQuery}".`}
+              </p>
             )}
           </div>
         </section>
@@ -182,45 +248,49 @@ export default function SupportPage() {
         {/* Support Request Form */}
         <section className="bg-white/5 border border-white/5 rounded-3xl p-8 max-w-3xl mx-auto space-y-6">
           <div>
-            <h2 className="text-3xl font-light">Submit a Request</h2>
+            <h2 className="text-3xl font-light">{t("support.contactTitle")}</h2>
             <p className="text-white/50 text-sm mt-1">
-              Need assistance? Send a message to our support team and we will get back to you soon.
+              {t("support.contactSubtitle")}
             </p>
           </div>
 
           {formSubmitted ? (
             <div className="bg-green-500/10 border border-green-500/20 text-green-300 rounded-2xl p-6 text-center space-y-3">
               <span className="text-3xl">✓</span>
-              <h3 className="text-xl font-medium">Ticket Submitted Successfully!</h3>
+              <h3 className="text-xl font-medium">
+                {locale === "es" ? "¡Mensaje Enviado Exitosamente!" : "Ticket Submitted Successfully!"}
+              </h3>
               <p className="text-sm opacity-80 max-w-md mx-auto">
-                Thank you for reaching out. We have received your request and will follow up shortly.
+                {locale === "es" ? "Gracias por contactarnos. Responderemos a tu consulta a la brevedad." : "Thank you for reaching out. We have received your request and will follow up shortly."}
               </p>
               <button
                 onClick={() => {
                   setFormSubmitted(false);
                   setTicketData({ name: "", email: "", category: "general", subject: "", message: "" });
                 }}
-                className="mt-4 px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-sm rounded-xl transition"
+                className="mt-4 px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-sm rounded-xl transition cursor-pointer"
               >
-                Submit another request
+                {locale === "es" ? "Enviar otra consulta" : "Submit another request"}
               </button>
             </div>
           ) : (
             <form onSubmit={handleSubmitTicket} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm text-white/60 mb-1">Your Name</label>
+                  <label className="block text-sm text-white/60 mb-1">
+                    {locale === "es" ? "Tu Nombre" : "Your Name"}
+                  </label>
                   <input
                     type="text"
                     required
                     value={ticketData.name}
                     onChange={(e) => setTicketData({ ...ticketData, name: e.target.value })}
-                    placeholder="Enter your name"
+                    placeholder={locale === "es" ? "Ingresa tu nombre" : "Enter your name"}
                     className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white outline-none focus:border-flower-blue transition text-sm"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm text-white/60 mb-1">Email Address</label>
+                  <label className="block text-sm text-white/60 mb-1">{t("auth.emailLabel")}</label>
                   <input
                     type="email"
                     required
@@ -233,40 +303,46 @@ export default function SupportPage() {
               </div>
 
               <div>
-                <label className="block text-sm text-white/60 mb-1">Topic Category</label>
+                <label className="block text-sm text-white/60 mb-1">
+                  {locale === "es" ? "Categoría" : "Topic Category"}
+                </label>
                 <select
                   value={ticketData.category}
                   onChange={(e) => setTicketData({ ...ticketData, category: e.target.value })}
                   className="w-full bg-[#1b1e22] border border-white/10 rounded-xl px-4 py-2.5 text-white outline-none focus:border-flower-blue transition text-sm"
                 >
-                  <option value="general">General Inquiry</option>
-                  <option value="account">Account & Profile</option>
-                  <option value="points">Leagues & Points</option>
-                  <option value="technical">Technical Issue</option>
-                  <option value="moderation">Feedback & Moderation</option>
+                  <option value="general">{locale === "es" ? "Consulta General" : "General Inquiry"}</option>
+                  <option value="account">{locale === "es" ? "Cuenta y Perfil" : "Account & Profile"}</option>
+                  <option value="points">{locale === "es" ? "Ligas y Puntos" : "Leagues & Points"}</option>
+                  <option value="technical">{locale === "es" ? "Problema Técnico" : "Technical Issue"}</option>
+                  <option value="moderation">{locale === "es" ? "Sugerencias y Moderación" : "Feedback & Moderation"}</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-sm text-white/60 mb-1">Subject</label>
+                <label className="block text-sm text-white/60 mb-1">
+                  {locale === "es" ? "Asunto" : "Subject"}
+                </label>
                 <input
                   type="text"
                   required
                   value={ticketData.subject}
                   onChange={(e) => setTicketData({ ...ticketData, subject: e.target.value })}
-                  placeholder="Summary of your question or issue"
+                  placeholder={locale === "es" ? "Resumen de tu duda o problema" : "Summary of your question or issue"}
                   className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white outline-none focus:border-flower-blue transition text-sm"
                 />
               </div>
 
               <div>
-                <label className="block text-sm text-white/60 mb-1">Description</label>
+                <label className="block text-sm text-white/60 mb-1">
+                  {locale === "es" ? "Descripción" : "Description"}
+                </label>
                 <textarea
                   required
                   rows={4}
                   value={ticketData.message}
                   onChange={(e) => setTicketData({ ...ticketData, message: e.target.value })}
-                  placeholder="Provide details about your request..."
+                  placeholder={locale === "es" ? "Detalla tu consulta..." : "Provide details about your request..."}
                   className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white outline-none focus:border-flower-blue transition text-sm resize-none"
                 />
               </div>
@@ -276,7 +352,7 @@ export default function SupportPage() {
                   type="submit"
                   className="bg-flower-blue hover:bg-flower-blue/90 text-white px-6 py-2.5 rounded-xl font-medium transition cursor-pointer"
                 >
-                  Send Message
+                  {t("support.contactButton")}
                 </button>
               </div>
             </form>
@@ -286,7 +362,7 @@ export default function SupportPage() {
         {/* Return link */}
         <div className="text-center">
           <Link href="/dashboard" className="text-white/40 hover:text-white text-sm transition">
-            ← Return to Dashboard
+            {locale === "es" ? "← Volver al Panel" : "← Return to Dashboard"}
           </Link>
         </div>
       </div>

@@ -604,7 +604,9 @@ export type DashboardActivityItem = {
   id: string;
   userImage: string;
   userName: string;
+  username: string;
   subject: string;
+  communitySlug: string;
   points: number;
   type: "gave" | "received";
 };
@@ -632,7 +634,9 @@ export async function getUserRecentActivities(
                 id: `rec-${post.id}-${comment.id}`,
                 userImage: helperProfile.image,
                 userName: helperProfile.name,
+                username: helperProfile.username,
                 subject: community.name,
+                communitySlug: community.slug,
                 points: comment.upvotes + (comment.accepted ? 20 : 1),
                 type: "received",
               });
@@ -650,7 +654,9 @@ export async function getUserRecentActivities(
               id: `gave-${post.id}-${myComment.id}`,
               userImage: authorProfile.image,
               userName: authorProfile.name,
+              username: authorProfile.username,
               subject: community.name,
+              communitySlug: community.slug,
               points: myComment.upvotes + (myComment.accepted ? 20 : 1),
               type: "gave",
             });
@@ -823,16 +829,19 @@ export async function getUserLeagueHighlight(username: string) {
     gold: { name: "Gold", nextName: "Sapphire", min: 150, target: 300 },
     sapphire: { name: "Sapphire", nextName: "Ruby", min: 300, target: 500 },
     ruby: { name: "Ruby", nextName: "Diamond", min: 500, target: 800 },
-    diamond: { name: "Diamond", nextName: "Legend", min: 800, target: 1200 },
+    diamond: { name: "Diamond", nextName: "", min: 800, target: 800 },
   };
 
   const currentTier = tierConfig[leagueId] || tierConfig.gold;
+  const isTopTier = leagueId === "diamond";
 
-  const pointsToNextTier = Math.max(0, currentTier.target - userPoints);
+  const pointsToNextTier = isTopTier ? 0 : Math.max(0, currentTier.target - userPoints);
   const range = currentTier.target - currentTier.min;
-  const progressPercent = range > 0
-    ? Math.min(1, Math.max(0.05, (userPoints - currentTier.min) / range))
-    : 0.9;
+  const progressPercent = isTopTier
+    ? 1.0
+    : range > 0
+      ? Math.min(1, Math.max(0.05, (userPoints - currentTier.min) / range))
+      : 0.9;
 
   const { data: rawEntries } = await supabase
     .from("league_entries")
@@ -897,7 +906,7 @@ export async function getLeaguesData() {
     {
       id: "bronze",
       tier: "Bronze",
-      name: "Explorer League",
+      name: "Bronze League",
       threshold: "Top 20% Promoted ⬆",
       accent: "#CD7F32",
       banner: "/testing/banner_test.png",
@@ -905,7 +914,7 @@ export async function getLeaguesData() {
     {
       id: "silver",
       tier: "Silver",
-      name: "Collaborator League",
+      name: "Silver League",
       threshold: "Top 20% Promoted ⬆",
       accent: "#C0C0C0",
       banner: "/testing/banner_test.png",
@@ -913,7 +922,7 @@ export async function getLeaguesData() {
     {
       id: "gold",
       tier: "Gold",
-      name: "Scholar League",
+      name: "Gold League",
       threshold: "Top 20% Promoted ⬆",
       accent: "#FFD700",
       banner: "/testing/banner_test.png",
@@ -921,7 +930,7 @@ export async function getLeaguesData() {
     {
       id: "sapphire",
       tier: "Sapphire",
-      name: "Master League",
+      name: "Sapphire League",
       threshold: "Top 20% Promoted ⬆",
       accent: "#0F52BA",
       banner: "/testing/banner_test.png",
@@ -929,7 +938,7 @@ export async function getLeaguesData() {
     {
       id: "ruby",
       tier: "Ruby",
-      name: "Champion League",
+      name: "Ruby League",
       threshold: "Top 20% Promoted ⬆",
       accent: "#E0115F",
       banner: "/testing/banner_test.png",
@@ -937,8 +946,8 @@ export async function getLeaguesData() {
     {
       id: "diamond",
       tier: "Diamond",
-      name: "Legend League",
-      threshold: "Top 20% Promoted ⬆",
+      name: "Diamond League",
+      threshold: "Pinnacle League 🏆",
       accent: "#B9F2FF",
       banner: "/testing/banner_test.png",
     },

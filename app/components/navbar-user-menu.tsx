@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import LogoutButton from "@/app/components/logout-button";
 import type { FriendRequestItem } from "@/lib/demo-social";
+import { useTranslation } from "@/lib/i18n/client";
 
 type NavbarUserMenuProps = {
   user: {
@@ -20,6 +21,7 @@ export default function NavbarUserMenu({ user }: NavbarUserMenuProps) {
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const [loadingActionId, setLoadingActionId] = useState<string | null>(null);
 
+  const { t } = useTranslation();
   const navRef = useRef<HTMLDivElement>(null);
 
   const fetchRequests = async () => {
@@ -113,19 +115,19 @@ export default function NavbarUserMenu({ user }: NavbarUserMenuProps) {
           <div className="flex items-center justify-between border-b border-white/10 pb-3">
             <div className="flex items-center gap-2">
               <span className="icon icon-rounded text-flower-blue text-sm">notifications</span>
-              <h3 className="text-sm font-semibold text-white">Notifications</h3>
+              <h3 className="text-sm font-semibold text-white">{t("navbar.notifications")}</h3>
             </div>
             {requests.length > 0 && (
               <span className="bg-red-500/20 text-red-300 border border-red-500/30 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                {requests.length} new
+                {requests.length} {t("navbar.newNotifications")}
               </span>
             )}
           </div>
 
           {requests.length === 0 ? (
             <div className="text-center py-6 space-y-1">
-              <p className="text-white/60 text-xs">No pending notifications.</p>
-              <p className="text-white/30 text-[11px]">Friend requests and alerts will appear here.</p>
+              <p className="text-white/60 text-xs">{t("navbar.noNotifications")}</p>
+              <p className="text-white/30 text-[11px]">{t("navbar.notificationsHint")}</p>
             </div>
           ) : (
             <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1">
@@ -157,14 +159,14 @@ export default function NavbarUserMenu({ user }: NavbarUserMenuProps) {
                       disabled={loadingActionId === req.senderUsername}
                       className="px-2.5 py-1 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition cursor-pointer text-[11px]"
                     >
-                      Accept
+                      {t("common.accept")}
                     </button>
                     <button
                       onClick={() => handleDecline(req.senderUsername)}
                       disabled={loadingActionId === req.senderUsername}
                       className="px-2 py-1 bg-white/10 hover:bg-red-500/20 text-white/70 hover:text-red-300 rounded-lg transition cursor-pointer text-[11px]"
                     >
-                      Decline
+                      {t("common.decline")}
                     </button>
                   </div>
                 </div>
@@ -191,11 +193,11 @@ export default function NavbarUserMenu({ user }: NavbarUserMenuProps) {
           >
             <span className="flex items-center gap-2">
               <span className="icon icon-rounded text-sm">notifications</span>
-              Notifications
+              {t("navbar.notifications")}
             </span>
             {requests.length > 0 ? (
               <span className="bg-red-500/80 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-                {requests.length} new
+                {requests.length} {t("navbar.newNotifications")}
               </span>
             ) : (
               <span className="text-white/30 text-[10px]">0</span>
@@ -207,7 +209,7 @@ export default function NavbarUserMenu({ user }: NavbarUserMenuProps) {
             className="flex items-center gap-2 text-white/80 hover:text-white text-xs py-2 px-2.5 rounded-xl hover:bg-white/10 transition"
           >
             <span className="icon icon-rounded text-sm">person</span>
-            My Profile
+            {t("navbar.myProfile")}
           </a>
 
           <a
@@ -215,7 +217,7 @@ export default function NavbarUserMenu({ user }: NavbarUserMenuProps) {
             className="flex items-center gap-2 text-white/80 hover:text-white text-xs py-2 px-2.5 rounded-xl hover:bg-white/10 transition mb-2"
           >
             <span className="icon icon-rounded text-sm">settings</span>
-            Settings
+            {t("navbar.settings")}
           </a>
 
           <div className="h-px bg-white/10 my-1" />

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslation } from "@/lib/i18n/client";
 
 type CommunityJoinButtonProps = {
   slug: string;
@@ -13,6 +14,7 @@ export default function CommunityJoinButton({
   initialJoined,
 }: CommunityJoinButtonProps) {
   const router = useRouter();
+  const { t } = useTranslation();
   const [joined, setJoined] = useState(initialJoined);
   const [loading, setLoading] = useState(false);
 
@@ -50,7 +52,7 @@ export default function CommunityJoinButton({
           : "bg-flower-blue hover:bg-flower-blue/90 text-white"
       }`}
     >
-      {loading ? "Updating..." : joined ? "Leave Community" : "Join Community"}
+      {loading ? t("common.saving") : joined ? t("communities.leaveCommunity") : t("communities.joinCommunity")}
     </button>
   );
 }

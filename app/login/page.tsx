@@ -2,11 +2,13 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslation } from "@/lib/i18n/client";
 
 type Mode = "login" | "signup";
 
 export default function Login() {
   const router = useRouter();
+  const { t } = useTranslation();
   const [mode, setMode] = useState<Mode>("login");
   const [form, setForm] = useState({
     username: "",
@@ -76,23 +78,23 @@ export default function Login() {
         <div className="flex flex-col items-center mb-8">
           <img className="h-10 mb-2" src="/fleurir/logo_x1.png" alt="Fleurir Logo" />
           <h1 className="text-white text-2xl font-light tracking-tight">
-            {mode === "login" ? "Welcome back" : "Create account"}
+            {mode === "login" ? t("auth.loginTitle") : t("auth.signupTitle")}
           </h1>
           <p className="text-white/50 text-sm">
             {mode === "login"
-              ? "Log in to your account"
-              : "Begin your journey with us"}
+              ? t("auth.loginSubtitle")
+              : t("auth.signupSubtitle")}
           </p>
         </div>
 
         {error && (
-          <div className="mb-4 bg-red-500/15 border border-red-400/30 text-red-200 px-4 py-3 rounded-xl">
+          <div className="mb-4 bg-red-500/15 border border-red-400/30 text-red-200 px-4 py-3 rounded-xl text-sm">
             {error}
           </div>
         )}
 
         {success && (
-          <div className="mb-4 bg-green-500/15 border border-green-400/30 text-green-200 px-4 py-3 rounded-xl">
+          <div className="mb-4 bg-green-500/15 border border-green-400/30 text-green-200 px-4 py-3 rounded-xl text-sm">
             {success}
           </div>
         )}
@@ -101,7 +103,7 @@ export default function Login() {
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
               <label className="block text-white/70 text-xs font-medium mb-1.5 ml-1 uppercase tracking-wider">
-                Email Address
+                {t("auth.emailLabel")}
               </label>
               <input
                 type="email"
@@ -116,13 +118,13 @@ export default function Login() {
 
             <div>
               <label className="block text-white/70 text-xs font-medium mb-1.5 ml-1 uppercase tracking-wider">
-                Password
+                {t("auth.passwordLabel")}
               </label>
               <input
                 type="password"
                 name="password"
                 value={form.password}
-                placeholder="Password"
+                placeholder="••••••••"
                 onChange={handleChange}
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-flower-blue/50 transition"
                 required
@@ -130,22 +132,22 @@ export default function Login() {
             </div>
 
             <button className="cursor-pointer w-full bg-flower-blue hover:bg-flower-blue/90 text-white font-medium py-3 rounded-xl transition-all active:scale-[0.98] mt-2">
-              Log In
+              {t("auth.loginButton")}
             </button>
 
             <button
               type="button"
               onClick={() => setMode("signup")}
-              className="w-full text-sm text-white/60 hover:text-white"
+              className="w-full text-sm text-white/60 hover:text-white cursor-pointer mt-2"
             >
-              Don't have an account?
+              {t("auth.noAccount")} <span className="text-flower-blue underline">{t("auth.signUpLink")}</span>
             </button>
           </form>
         ) : (
           <form onSubmit={handleSignup} className="space-y-4">
             <div>
               <label className="block text-white/70 text-xs font-medium mb-1.5 ml-1 uppercase tracking-wider">
-                Username
+                {t("settings.usernameLabel")}
               </label>
               <input
                 type="text"
@@ -160,7 +162,7 @@ export default function Login() {
 
             <div>
               <label className="block text-white/70 text-xs font-medium mb-1.5 ml-1 uppercase tracking-wider">
-                Display Name
+                {t("settings.displayNameLabel")}
               </label>
               <input
                 type="text"
@@ -175,7 +177,7 @@ export default function Login() {
 
             <div>
               <label className="block text-white/70 text-xs font-medium mb-1.5 ml-1 uppercase tracking-wider">
-                Email Address
+                {t("auth.emailLabel")}
               </label>
               <input
                 type="email"
@@ -190,13 +192,13 @@ export default function Login() {
 
             <div>
               <label className="block text-white/70 text-xs font-medium mb-1.5 ml-1 uppercase tracking-wider">
-                Password
+                {t("auth.passwordLabel")}
               </label>
               <input
                 type="password"
                 name="password"
                 value={form.password}
-                placeholder="At least 6 characters"
+                placeholder="••••••••"
                 onChange={handleChange}
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder:text-white/20 focus:outline-none focus:ring-2 focus:ring-flower-blue/50 transition"
                 required
@@ -204,15 +206,15 @@ export default function Login() {
             </div>
 
             <button className="cursor-pointer w-full bg-flower-blue hover:bg-flower-blue/90 text-white font-medium py-3 rounded-xl transition-all active:scale-[0.98] mt-2">
-              Create Account
+              {t("auth.signupButton")}
             </button>
 
             <button
               type="button"
               onClick={() => setMode("login")}
-              className="w-full text-sm text-white/60 hover:text-white"
+              className="w-full text-sm text-white/60 hover:text-white cursor-pointer mt-2"
             >
-              Already have an account?
+              {t("auth.haveAccount")} <span className="text-flower-blue underline">{t("auth.signInLink")}</span>
             </button>
           </form>
         )}

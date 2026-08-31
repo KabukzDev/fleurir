@@ -8,6 +8,7 @@ import {
   getFriendshipStatus,
 } from "@/lib/demo-social";
 import { getUser } from "@/lib/auth";
+import { getLocale, getDictionary } from "@/lib/i18n/server";
 import FriendToggleButton from "@/app/components/friend-toggle-button";
 
 type ProfilePageProps = {
@@ -35,11 +36,14 @@ export async function generateMetadata({ params }: ProfilePageProps) {
 }
 
 export default async function ProfilePage({ params }: ProfilePageProps) {
-  const { username } = await params;
-  const [profile, currentUser] = await Promise.all([
-    getUserProfile(username),
+  const [{ username }, currentUser, locale] = await Promise.all([
+    params,
     getUser(),
+    getLocale(),
   ]);
+
+  const dict = getDictionary(locale);
+  const profile = await getUserProfile(username);
 
   if (!profile) notFound();
 
@@ -52,6 +56,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
     getUserContributionStats(username),
     getUserCollaborations(username),
   ]);
+
   const recentActivity: ActivityItem[] = collaborations.map((collaboration) => ({
     id: collaboration.id,
     communitySlug: collaboration.communitySlug,
@@ -60,10 +65,10 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
     title: collaboration.postTitle,
     action:
       collaboration.action === "asked"
-        ? "Started a thread"
+        ? (locale === "es" ? "Inició una publicación" : "Started a thread")
         : collaboration.action === "answered"
-          ? "Joined a thread"
-          : "Replied in conversation",
+          ? (locale === "es" ? "Respondió en una publicación" : "Joined a thread")
+          : (locale === "es" ? "Comentó en la conversación" : "Replied in conversation"),
     points: collaboration.points,
     solved: collaboration.solved,
   }));
@@ -114,19 +119,19 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
 
             <div className="grid grid-cols-2 gap-2 lg:w-72">
               <div className="rounded-2xl bg-mist-950/60 px-4 py-3">
-                <p className="text-white/45">Points</p>
+                <p className="text-white/45">{dict.common.points}</p>
                 <p className="text-2xl">{profile.points}</p>
               </div>
               <div className="rounded-2xl bg-mist-950/60 px-4 py-3">
-                <p className="text-white/45">Accepted</p>
+                <p className="text-white/45">{locale === "es" ? "Aceptadas" : "Accepted"}</p>
                 <p className="text-2xl">{stats.acceptedAnswers}</p>
               </div>
               <div className="rounded-2xl bg-mist-950/60 px-4 py-3">
-                <p className="text-white/45">Joined</p>
+                <p className="text-white/45">{locale === "es" ? "Miembro desde" : "Joined"}</p>
                 <p className="text-2xl">{profile.joinedAt}</p>
               </div>
               <div className="rounded-2xl bg-mist-950/60 px-4 py-3">
-                <p className="text-white/45">Location</p>
+                <p className="text-white/45">{dict.settings.locationLabel}</p>
                 <p className="wrap">{profile.location}</p>
               </div>
             </div>
@@ -135,26 +140,26 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
 
         <section className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="bg-white/5 rounded-2xl p-5">
-            <p className="text-white/50">Posts</p>
+            <p className="text-white/50">{dict.communities.allDiscussions}</p>
             <p className="text-4xl font-light mt-2">{stats.posts}</p>
           </div>
           <div className="bg-white/5 rounded-2xl p-5">
-            <p className="text-white/50">Comments</p>
+            <p className="text-white/50">{dict.common.comments}</p>
             <p className="text-4xl font-light mt-2">{stats.comments}</p>
           </div>
           <div className="bg-white/5 rounded-2xl p-5">
-            <p className="text-white/50">Replies</p>
+            <p className="text-white/50">{dict.common.replies}</p>
             <p className="text-4xl font-light mt-2">{stats.replies}</p>
           </div>
           <div className="bg-white/5 rounded-2xl p-5">
-            <p className="text-white/50">Accepted Answers</p>
+            <p className="text-white/50">{locale === "es" ? "Soluciones Aceptadas" : "Accepted Answers"}</p>
             <p className="text-4xl font-light mt-2">{stats.acceptedAnswers}</p>
           </div>
         </section>
 
         <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 bg-white/5 border border-white/5 rounded-3xl p-6">
-            <h2 className="text-2xl font-light mb-4">Activity Timeline</h2>
+            <h2 className="text-2xl font-light mb-4">{locale === "es" ? "Cronología de Actividad" : "Activity Timeline"}</h2>
 
             <div className="space-y-4">
               {recentActivity.map((activity) => (
@@ -179,23 +184,23 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
 
                   <div className="text-right">
                     <span className="text-flower-blue font-medium">
-                      +{activity.points} pts
+                      +{activity.points} {dict.common.pts}
                     </span>
                     {activity.solved && (
-                      <p className="text-green-300 text-xs mt-1">Solved</p>
+                      <p className="text-green-300 text-xs mt-1">{dict.common.solved}</p>
                     )}
                   </div>
                 </div>
               ))}
 
               {recentActivity.length === 0 && (
-                <p className="text-white/40 text-sm">No recent activity.</p>
+                <p className="text-white/40 text-sm">{locale === "es" ? "Sin actividad reciente." : "No recent activity."}</p>
               )}
             </div>
           </div>
 
           <div className="bg-white/5 border border-white/5 rounded-3xl p-6 h-fit">
-            <h2 className="text-2xl font-light mb-4">Active Communities</h2>
+            <h2 className="text-2xl font-light mb-4">{locale === "es" ? "Comunidades Activas" : "Active Communities"}</h2>
 
             <div className="space-y-3">
               {stats.communities.map((community) => (
@@ -205,13 +210,13 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
                 >
                   <span className="font-medium">{community.name}</span>
                   <span className="text-white/50 text-sm">
-                    {community.contributions} contributions
+                    {community.contributions} {dict.communities.contributions.toLowerCase()}
                   </span>
                 </div>
               ))}
 
               {stats.communities.length === 0 && (
-                <p className="text-white/40 text-sm">No active communities.</p>
+                <p className="text-white/40 text-sm">{locale === "es" ? "Sin comunidades activas." : "No active communities."}</p>
               )}
             </div>
           </div>

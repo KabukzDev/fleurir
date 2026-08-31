@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "@/lib/i18n/client";
 import type { ForumPost } from "../forum-client";
 
 type Reply = {
@@ -40,6 +41,7 @@ export default function PostClient({
   currentUser,
 }: PostClientProps) {
   const router = useRouter();
+  const { t, locale } = useTranslation();
   const [post, setPost] = useState<ForumPost | null>(initialPost);
   const [commentsList, setCommentsList] = useState<Comment[]>(initialPost?.comments || []);
   const [reply, setReply] = useState("");
@@ -66,7 +68,7 @@ export default function PostClient({
     setAttachmentFile(file);
 
     try {
-      // Step 1: Request pre-signed upload URL from API (lightweight ~100B JSON body)
+      // Step 1: Request pre-signed upload URL from API
       const presignRes = await fetch("/api/storage/presigned-url", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -91,7 +93,7 @@ export default function PostClient({
 
       const { signedUrl, publicUrl } = presignData;
 
-      // Step 2: Upload file directly from browser to Cloud Storage (0 Bytes pass through Vercel serverless limits!)
+      // Step 2: Direct browser upload via XMLHttpRequest for progress monitoring
       await new Promise<void>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         xhr.open("PUT", signedUrl, true);
@@ -107,144 +109,114 @@ export default function PostClient({
         xhr.onload = () => {
           if (xhr.status >= 200 && xhr.status < 300) {
             setUploadProgress(100);
-            setAttachmentUrl(publicUrl);
             resolve();
           } else {
-            reject(new Error(`Direct Upload Failed (HTTP ${xhr.status})`));
+            reject(new Error(`Storage Provider returned status ${xhr.status}`));
           }
         };
 
-        xhr.onerror = () => reject(new Error("Network connection dropped during file upload. Please retry."));
-        xhr.ontimeout = () => reject(new Error("File upload timed out. Please check your connection."));
+        xhr.onerror = () => {
+          reject(new Error("Network error during direct storage upload."));
+        };
 
         xhr.send(file);
       });
-    } catch (err: any) {
-      setUploadError(err?.message || "File upload failed.");
-      setUploadProgress(null);
-    } finally {
+
+      setAttachmentUrl(publicUrl);
       setIsUploadingFile(false);
+    } catch (err: any) {
+      console.error("Direct upload error:", err);
+      setUploadError(err.message || "Direct upload failed. Please retry.");
+      setIsUploadingFile(false);
+      setUploadProgress(null);
     }
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setError("");
-    setUploadError("");
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // 20MB limit check
-    const MAX_FILE_SIZE = 20 * 1024 * 1024;
-    if (file.size > MAX_FILE_SIZE) {
-      setError("File size exceeds 20MB limit. Please select a smaller file.");
-      e.target.value = "";
+    if (file.size > 20 * 1024 * 1024) {
+      setError(locale === "es" ? "El archivo supera el límite de 20MB." : "File exceeds maximum size limit of 20MB.");
       return;
     }
 
-    startDirectFileUpload(file);
-  };
-
-  // Real-time polling for new comments every 4 seconds
-  useEffect(() => {
-    if (!postId) return;
-
-    const interval = setInterval(async () => {
-      try {
-        const res = await fetch(`/api/comments?postId=${postId}`);
-        if (res.ok) {
-          const data = await res.json();
-          const fetchedComments: Comment[] = data.comments || [];
-          if (fetchedComments.length > commentsList.length) {
-            setHasNewCommentsNotice(true);
-          }
-        }
-      } catch {
-        // Ignore background polling errors silently
-      }
-    }, 4000);
-
-    return () => clearInterval(interval);
-  }, [postId, commentsList.length]);
-
-  const handleRefreshComments = async () => {
-    try {
-      const res = await fetch(`/api/comments?postId=${postId}`);
-      if (res.ok) {
-        const data = await res.json();
-        setCommentsList(data.comments || []);
-        setHasNewCommentsNotice(false);
-      }
-    } catch {
-      // Ignore error
-    }
+    void startDirectFileUpload(file);
   };
 
   const handleReply = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (!reply.trim() && !attachmentUrl) return;
+
     setError("");
-
-    if (!reply.trim()) return;
-
-    if (isUploadingFile) {
-      setError("Please wait for the file upload to complete.");
-      return;
-    }
-
     setIsSubmitting(true);
 
     try {
-      // Send lightweight comment payload (~150 bytes JSON)
       const response = await fetch("/api/comments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           postId,
           content: reply.trim(),
-          attachmentUrl: attachmentUrl ? attachmentUrl.trim() : null,
+          attachmentUrl: attachmentUrl || undefined,
         }),
       });
 
-      const responseText = await response.text();
-      let data;
-      try {
-        data = JSON.parse(responseText);
-      } catch {
-        const cleanText = responseText.replace(/<[^>]*>?/gm, "").trim();
-        if (!response.ok) {
-          throw new Error(cleanText ? `Server Error (${response.status}): ${cleanText.slice(0, 150)}` : `Server Error ${response.status}`);
-        }
-        throw new Error("Invalid response format from server.");
-      }
+      const data = await response.json();
 
       if (!response.ok) {
-        setError(data?.error || `Upload failed (${response.status})`);
+        setError(data.error || t("common.errorGeneric"));
+        setIsSubmitting(false);
         return;
       }
 
-      const nextComment: Comment = data.comment;
-      setCommentsList((prev) => [nextComment, ...prev]);
       setReply("");
       setAttachmentUrl("");
       setAttachmentName("");
       setAttachmentFile(null);
       setUploadProgress(null);
-    } catch (err: any) {
-      setError(err?.message || "Failed to post reply. Please try again.");
+      setCommentsList((prev) => [...prev, data.comment]);
+    } catch {
+      setError(t("common.errorGeneric"));
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const handleRefreshComments = async () => {
+    try {
+      const res = await fetch(`/api/posts?id=${postId}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.post) {
+          setPost(data.post);
+          setCommentsList(data.post.comments || []);
+        }
+      }
+    } catch {
+      // Ignore
+    } finally {
+      setHasNewCommentsNotice(false);
+    }
+  };
+
   const handleDeletePost = async () => {
-    if (!confirm("Are you sure you want to delete this post?")) return;
+    if (!confirm(t("forum.deleteConfirm"))) return;
+    setError("");
     setIsDeleting(true);
 
-    const res = await fetch(`/api/posts?id=${postId}`, { method: "DELETE" });
-    if (res.ok) {
-      router.push(`/communities/${slug}/forum`);
-    } else {
+    try {
+      const res = await fetch(`/api/posts?id=${postId}`, { method: "DELETE" });
       const data = await res.json();
-      setError(data.error || "Could not delete post.");
+
+      if (res.ok) {
+        router.push(`/communities/${slug}/forum`);
+      } else {
+        setError(data.error || "Could not delete post.");
+        setIsDeleting(false);
+      }
+    } catch {
+      setError(t("common.errorGeneric"));
       setIsDeleting(false);
     }
   };
@@ -286,7 +258,7 @@ export default function PostClient({
   };
 
   const handleDeleteComment = async (commentId: string | number) => {
-    if (!confirm("Are you sure you want to delete this comment?")) return;
+    if (!confirm(t("forum.deleteConfirm"))) return;
     setError("");
 
     const res = await fetch(`/api/comments?id=${commentId}`, { method: "DELETE" });
@@ -340,12 +312,12 @@ export default function PostClient({
     return (
       <main className="min-h-screen text-white p-10">
         <div className="max-w-3xl mx-auto space-y-4">
-          <p>Post not found</p>
+          <p>{locale === "es" ? "Publicación no encontrada" : "Post not found"}</p>
           <Link
             href={`/communities/${slug}/forum`}
             className="text-flower-blue hover:underline"
           >
-            Back to forum
+            {locale === "es" ? "Volver al foro" : "Back to forum"}
           </Link>
         </div>
       </main>
@@ -357,12 +329,12 @@ export default function PostClient({
       {/* Real-time Notification Banner / Popup */}
       {hasNewCommentsNotice && (
         <div className="fixed top-20 right-6 z-50 bg-flower-blue/90 border border-white/20 text-white px-5 py-3 rounded-2xl shadow-xl flex items-center gap-4 animate-bounce">
-          <span>🔔 The page has been updated with new comments!</span>
+          <span>🔔 {t("forum.newCommentsNotice")}</span>
           <button
             onClick={handleRefreshComments}
-            className="bg-white text-flower-blue font-semibold px-3 py-1 rounded-xl text-sm hover:bg-white/90"
+            className="bg-white text-flower-blue font-semibold px-3 py-1 rounded-xl text-sm hover:bg-white/90 cursor-pointer"
           >
-            Refresh Comments
+            {t("forum.refreshComments")}
           </button>
         </div>
       )}
@@ -372,13 +344,13 @@ export default function PostClient({
           href={`/communities/${slug}/forum`}
           className="inline-block text-white/50 hover:text-white"
         >
-          ← Back to forum
+          ← {locale === "es" ? "Volver al foro" : "Back to forum"}
         </Link>
 
         {error && (
           <div className="bg-red-500/20 border border-red-500/30 text-red-200 px-4 py-3 rounded-2xl flex justify-between items-center">
             <span>{error}</span>
-            <button onClick={() => setError("")} className="text-sm opacity-70 hover:opacity-100">✕</button>
+            <button onClick={() => setError("")} className="text-sm opacity-70 hover:opacity-100 cursor-pointer">✕</button>
           </div>
         )}
 
@@ -392,16 +364,16 @@ export default function PostClient({
 
                 {post.solved && (
                   <span className="px-3 py-1 bg-green-500/20 text-green-300 rounded-lg text-sm">
-                    Solved ✓
+                    {t("common.solved")} ✓
                   </span>
                 )}
 
                 {canSolvePost && (
                   <button
                     onClick={handleToggleSolvePost}
-                    className="px-3 py-1 bg-white/10 hover:bg-white/20 rounded-lg text-sm text-green-300 transition"
+                    className="px-3 py-1 bg-white/10 hover:bg-white/20 rounded-lg text-sm text-green-300 transition cursor-pointer"
                   >
-                    {post.solved ? "Unmark Solved" : "Mark as Solved"}
+                    {post.solved ? (locale === "es" ? "Quitar Resuelto" : "Unmark Solved") : t("forum.markSolved")}
                   </button>
                 )}
 
@@ -409,9 +381,9 @@ export default function PostClient({
                   <button
                     onClick={handleDeletePost}
                     disabled={isDeleting}
-                    className="px-3 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded-lg text-sm transition ml-auto"
+                    className="px-3 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded-lg text-sm transition ml-auto cursor-pointer"
                   >
-                    {isDeleting ? "Deleting..." : "Delete Post"}
+                    {isDeleting ? t("common.deleting") : t("forum.deletePost")}
                   </button>
                 )}
               </div>
@@ -420,18 +392,18 @@ export default function PostClient({
                 {post.title}
               </h1>
 
-              <p className="text-white/50 mt-2">by @{post.author}</p>
+              <p className="text-white/50 mt-2">{locale === "es" ? "por" : "by"} @{post.author}</p>
             </div>
 
             <div className="text-right text-white/60 text-sm flex flex-col items-end">
               <button
                 onClick={handleUpvotePost}
-                className="flex items-center gap-1 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-xl transition text-white"
+                className="flex items-center gap-1 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-xl transition text-white cursor-pointer"
               >
                 <span>{post.upvotes}</span>
                 <span>↑</span>
               </button>
-              <p className="mt-2">{commentsList.length} comments</p>
+              <p className="mt-2">{commentsList.length} {t("common.comments")}</p>
             </div>
           </div>
 
@@ -457,18 +429,18 @@ export default function PostClient({
             onChange={(event) => setReply(event.target.value)}
             placeholder={
               post.type === "question"
-                ? "Write your answer..."
-                : "Join the discussion..."
+                ? t("forum.replyPlaceholderQuestion")
+                : t("forum.replyPlaceholderDiscussion")
             }
             rows={4}
             className="w-full bg-transparent resize-none outline-none placeholder:text-white/25"
           />
 
-          {/* Attachment Controls (Upload only, 10MB limit) */}
+          {/* Attachment Controls */}
           <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-white/10 text-sm">
             <div className="flex items-center gap-3">
               <label className="cursor-pointer bg-white/10 hover:bg-white/20 text-white px-3.5 py-1.5 rounded-xl flex items-center gap-2 transition text-sm font-medium">
-                <span>📎 Attach File</span>
+                <span>📎 {t("forum.attachFile")}</span>
                 <input
                   type="file"
                   accept=".pdf,.docx,.doc,.xlsx,.xls,.pptx,.ppt,.txt,image/*"
@@ -478,7 +450,7 @@ export default function PostClient({
               </label>
 
               <span className="text-white/40 text-xs">
-                (Images, PDF, Word, Excel, PowerPoint - Max 20MB)
+                {t("forum.attachmentLimits")}
               </span>
             </div>
 
@@ -491,7 +463,7 @@ export default function PostClient({
                 }}
                 className="text-red-300 hover:text-red-400 text-xs px-2 cursor-pointer"
               >
-                Clear Attachment
+                {t("forum.clearAttachment")}
               </button>
             )}
           </div>
@@ -503,7 +475,7 @@ export default function PostClient({
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between text-xs text-white/80 font-medium">
                     <span className="truncate max-w-[200px] flex items-center gap-1.5">
-                      <span className="animate-pulse">☁️</span> {attachmentName || "Uploading..."}
+                      <span className="animate-pulse">☁️</span> {attachmentName || t("common.uploading")}
                     </span>
                     <span className="text-flower-blue font-bold">{uploadProgress || 0}%</span>
                   </div>
@@ -521,9 +493,9 @@ export default function PostClient({
                     <button
                       type="button"
                       onClick={() => startDirectFileUpload(attachmentFile)}
-                      className="bg-white/10 hover:bg-white/20 text-white px-2.5 py-1 rounded-lg transition font-medium"
+                      className="bg-white/10 hover:bg-white/20 text-white px-2.5 py-1 rounded-lg transition font-medium cursor-pointer"
                     >
-                      Retry
+                      {t("common.retry")}
                     </button>
                   )}
                 </div>
@@ -538,10 +510,10 @@ export default function PostClient({
                   ) : (
                     <div className="flex items-center gap-2 text-sm text-flower-blue">
                       <span className="text-xl">📄</span>
-                      <span className="font-medium truncate max-w-[200px]">{attachmentName || "Attached Document"}</span>
+                      <span className="font-medium truncate max-w-[200px]">{attachmentName || t("forum.attachedDocument")}</span>
                     </div>
                   )}
-                  <span className="text-xs text-emerald-400 font-medium flex items-center gap-1">✓ Uploaded</span>
+                  <span className="text-xs text-emerald-400 font-medium flex items-center gap-1">✓ {t("common.uploaded")}</span>
                 </div>
               ) : null}
             </div>
@@ -554,10 +526,8 @@ export default function PostClient({
               className="bg-flower-blue hover:bg-flower-blue/90 disabled:opacity-50 px-5 py-2 rounded-xl text-white font-medium transition cursor-pointer"
             >
               {isSubmitting
-                ? "Uploading..."
-                : post.type === "question"
-                ? "Post Answer"
-                : "Post Reply"}
+                ? t("common.uploading")
+                : t("forum.postReply")}
             </button>
           </div>
         </form>
@@ -589,7 +559,7 @@ export default function PostClient({
 
                       {comment.accepted && (
                         <span className="text-green-300 text-sm">
-                          Accepted answer ✓
+                          {t("forum.acceptedSolution")} ✓
                         </span>
                       )}
                     </div>
@@ -598,7 +568,7 @@ export default function PostClient({
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => handleUpvoteComment(comment.id)}
-                      className="bg-white/10 hover:bg-white/20 px-2.5 py-1 rounded-lg text-sm text-white transition flex items-center gap-1"
+                      className="bg-white/10 hover:bg-white/20 px-2.5 py-1 rounded-lg text-sm text-white transition flex items-center gap-1 cursor-pointer"
                     >
                       <span>{comment.upvotes}</span>
                       <span>↑</span>
@@ -607,18 +577,18 @@ export default function PostClient({
                     {canAcceptComment && (
                       <button
                         onClick={() => handleToggleAcceptComment(comment.id, comment.accepted)}
-                        className="px-2.5 py-1 bg-white/10 hover:bg-white/20 text-green-300 rounded-lg text-sm transition"
+                        className="px-2.5 py-1 bg-white/10 hover:bg-white/20 text-green-300 rounded-lg text-sm transition cursor-pointer"
                       >
-                        {comment.accepted ? "Unmark Accepted" : "Mark Accepted"}
+                        {comment.accepted ? (locale === "es" ? "Quitar Aceptada" : "Unmark Accepted") : t("forum.markAccepted")}
                       </button>
                     )}
 
                     {canDeleteComment && (
                       <button
                         onClick={() => handleDeleteComment(comment.id)}
-                        className="px-2.5 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded-lg text-sm transition"
+                        className="px-2.5 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded-lg text-sm transition cursor-pointer"
                       >
-                        Delete
+                        {t("common.delete")}
                       </button>
                     )}
                   </div>
@@ -677,7 +647,7 @@ export default function PostClient({
                               <p className="text-white/40 text-xs">{type}</p>
                             </div>
                             <span className="text-flower-blue text-xs font-semibold px-2.5 py-1 bg-flower-blue/15 rounded-lg shrink-0">
-                              Download ⬇
+                              {locale === "es" ? "Descargar ⬇" : "Download ⬇"}
                             </span>
                           </a>
                         );

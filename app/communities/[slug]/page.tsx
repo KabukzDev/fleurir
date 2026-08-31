@@ -2,8 +2,9 @@ import Image from "next/image";
 import Link from "next/link";
 import Card from "@/app/components/card";
 import CommunityJoinButton from "@/app/components/community-join-button";
-import { getAllCommunities, getCommunity, isUserCommunityMember } from "@/lib/demo-social";
+import { getAllCommunities, getCommunity, getForumPosts, isUserCommunityMember } from "@/lib/demo-social";
 import { getUser } from "@/lib/auth";
+import { getLocale, getDictionary } from "@/lib/i18n/server";
 
 type CommunityPageProps = {
   params: Promise<{ slug: string }>;
@@ -12,16 +13,21 @@ type CommunityPageProps = {
 export default async function CommunityPage({
   params,
 }: CommunityPageProps) {
-  const { slug } = await params;
+  const [{ slug }, user, locale] = await Promise.all([
+    params,
+    getUser(),
+    getLocale(),
+  ]);
 
-  const [community, communities, user] = await Promise.all([
+  const dict = getDictionary(locale);
+  const [community, communities, forumPosts] = await Promise.all([
     getCommunity(slug),
     getAllCommunities(),
-    getUser(),
+    getForumPosts(slug),
   ]);
 
   if (!community) {
-    return <div className="text-white p-10">Community not found</div>;
+    return <div className="text-white p-10">{locale === "es" ? "Comunidad no encontrada" : "Community not found"}</div>;
   }
 
   const isJoined = user ? await isUserCommunityMember(slug, user.id) : false;
@@ -30,15 +36,15 @@ export default async function CommunityPage({
     {
       id: 1,
       icon: "forum",
-      title: "Forum",
-      members: `${community.members.online}`,
+      title: dict.communities.forumTab,
+      members: `${forumPosts.length}`,
       img: "...",
       link: `/communities/${slug}/forum`,
     },
     {
       id: 2,
       icon: "group",
-      title: "Members",
+      title: dict.communities.membersTab,
       members: `${community.members.total}`,
       img: "...",
       link: `/communities/${slug}/members`,
@@ -51,7 +57,7 @@ export default async function CommunityPage({
 
         <aside className="w-90 bg-white/5 rounded-3xl p-4 h-fit">
           <h2 className="leading-none tracking-tight font-medium text-2xl text-flower-blue mx-2 mt-2 mb-4">
-            Communities
+            {dict.communities.title}
           </h2>
 
           <div className="space-y-2">
@@ -95,7 +101,7 @@ export default async function CommunityPage({
               <div>
                 <h1 className="text-6xl font-light">{community.name}</h1>
                 <p className="text-white/60">
-                  Managed by <a className="underline font-medium hover:text-flower-blue" href={`/profile/${community.manager.toLowerCase()}`}>@{community.manager}</a>
+                  {locale === "es" ? "Administrado por" : "Managed by"} <a className="underline font-medium hover:text-flower-blue" href={`/profile/${community.manager.toLowerCase()}`}>@{community.manager}</a>
                 </p>
               </div>
 
@@ -122,39 +128,40 @@ export default async function CommunityPage({
                   link={item.link}
                 />
               ))}
-              </div>
-              <div className="bg-white/4 rounded-2xl mt-4 p-5 flex flex-row justify-between">
-                <div className="flex flex-col justify-between items-start w-full">
-                  <p className="leading-none tracking-tight font-medium text-2xl pb-4">
-                    Community Profile
-                  </p>
-                  <div className="space-y-2 text-m w-full">
-                    <div className="bg-mist-950/60 backdrop-blur-sm rounded-lg px-3 py-2 text-center flex justify-between w-full">
-                      <span>Points</span>
-                      <span className="text-flower-blue">{community.profile?.points || 0}</span>
-                    </div>
-                    <div className="bg-mist-950/60 backdrop-blur-sm rounded-lg px-3 py-2 text-center flex justify-between w-full">
-                      <span>Contributions</span>
-                      <span className="text-flower-blue">{community.profile?.contributions || 0}</span>
-                    </div>
+            </div>
+
+            <div className="bg-white/4 rounded-2xl mt-4 p-5 flex flex-row justify-between">
+              <div className="flex flex-col justify-between items-start w-full">
+                <p className="leading-none tracking-tight font-medium text-2xl pb-4">
+                  {locale === "es" ? "Perfil de la Comunidad" : "Community Profile"}
+                </p>
+                <div className="space-y-2 text-m w-full">
+                  <div className="bg-mist-950/60 backdrop-blur-sm rounded-lg px-3 py-2 text-center flex justify-between w-full">
+                    <span>{dict.common.points}</span>
+                    <span className="text-flower-blue">{community.profile?.points || 0}</span>
+                  </div>
+                  <div className="bg-mist-950/60 backdrop-blur-sm rounded-lg px-3 py-2 text-center flex justify-between w-full">
+                    <span>{dict.communities.contributions}</span>
+                    <span className="text-flower-blue">{community.profile?.contributions || 0}</span>
                   </div>
                 </div>
-                <div className="flex flex-col justify-center items-end gap-4 w-full">
-                  <Link
-                    href={`/communities/${slug}/forum/ask?type=question`}
-                    className="w-fit px-5 border border-white/20 rounded-xl py-2 hover:bg-white/5 cursor-pointer"
-                  >
-                    Start contribution
-                  </Link>
-                  <Link
-                    href={`/communities/${slug}/forum/ask?type=discussion`}
-                    className="w-fit px-5 border border-white/20 rounded-xl py-2 hover:bg-white/5 cursor-pointer"
-                  >
-                    Start discussion
-                  </Link>
-                </div>
+              </div>
+              <div className="flex flex-col justify-center items-end gap-4 w-full">
+                <Link
+                  href={`/communities/${slug}/forum/ask?type=question`}
+                  className="w-fit px-5 border border-white/20 rounded-xl py-2 hover:bg-white/5 cursor-pointer text-sm"
+                >
+                  {dict.communities.askQuestion}
+                </Link>
+                <Link
+                  href={`/communities/${slug}/forum/ask?type=discussion`}
+                  className="w-fit px-5 border border-white/20 rounded-xl py-2 hover:bg-white/5 cursor-pointer text-sm"
+                >
+                  {dict.forum.newDiscussionTitle}
+                </Link>
               </div>
             </div>
+          </div>
         </section>
       </div>
     </main>

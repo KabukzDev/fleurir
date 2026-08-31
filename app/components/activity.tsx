@@ -1,10 +1,15 @@
+"use client";
+
 import React from 'react';
+import { useTranslation } from "@/lib/i18n/client";
 
 interface Activity {
   id: string;
   userImage: string;
   userName: string;
+  username?: string;
   subject: string;
+  communitySlug?: string;
   points: number;
   type: 'gave' | 'received';
 }
@@ -16,6 +21,7 @@ interface UserProfileProps {
 }
 
 const ActivityProfile: React.FC<UserProfileProps> = ({ userImage, activities, progressPercent = 0.5 }) => {
+  const { t } = useTranslation();
   const radius = 110;
   const circumference = 2 * Math.PI * radius;
   const validProgress = Math.min(1, Math.max(0.05, progressPercent));
@@ -26,48 +32,53 @@ const ActivityProfile: React.FC<UserProfileProps> = ({ userImage, activities, pr
       {/* Activity bubbles - dynamically visible only on large screens (xl+) to prevent collision */}
       {activities && activities.length > 0 && (
         <div className="hidden xl:flex flex-col items-end shrink">
-          {activities.map((item) => (
-            <div
-              key={item.id}
-              className="flex items-center gap-3 p-2.5 backdrop-blur-md transition-all"
-            >
-              {/* Text Bubble */}
-              <div className="text-white text-sm whitespace-nowrap pl-2">
-                {item.type === 'gave' ? (
-                  <span>
-                    You helped{' '}
-                    <a className="underline font-medium hover:text-flower-blue" href={`/profile/${item.userName.toLowerCase()}`}>
-                      {item.userName}
-                    </a>{' '}
-                    with{' '}
-                    <a className="underline font-medium hover:text-flower-blue" href={`/communities/${item.subject.toLowerCase().trim().replace(/\s+/g, '_')}`}>
-                      {item.subject}
-                    </a>
-                  </span>
-                ) : (
-                  <span>
-                    <a className="underline font-medium hover:text-flower-blue" href={`/profile/${item.userName.toLowerCase()}`}>
-                      {item.userName}
-                    </a>{' '}
-                    helped you on{' '}
-                    <a className="underline font-medium hover:text-flower-blue" href={`/communities/${item.subject.toLowerCase().trim().replace(/\s+/g, '_')}`}>
-                      {item.subject}
-                    </a>
-                  </span>
-                )}
-              </div>
+          {activities.map((item) => {
+            const profileSlug = item.username || item.userName.toLowerCase().replace(/\s+/g, '');
+            const communityLink = item.communitySlug || item.subject.toLowerCase().trim().replace(/\s+/g, '_');
 
-              {/* Avatar + Point Badge */}
-              <div className="relative shrink-0">
-                <div className="w-12 h-12 rounded-full border border-white/20 overflow-hidden">
-                  <img src={item.userImage} alt={item.userName} className="w-full h-full object-cover" />
+            return (
+              <div
+                key={item.id}
+                className="flex items-center gap-3 p-2.5 backdrop-blur-md transition-all"
+              >
+                {/* Text Bubble */}
+                <div className="text-white text-sm whitespace-nowrap pl-2">
+                  {item.type === 'gave' ? (
+                    <span>
+                      {t("dashboard.youHelped")}{' '}
+                      <a className="underline font-medium hover:text-flower-blue" href={`/profile/${profileSlug}`}>
+                        {item.userName}
+                      </a>{' '}
+                      {t("dashboard.with")}{' '}
+                      <a className="underline font-medium hover:text-flower-blue" href={`/communities/${communityLink}`}>
+                        {item.subject}
+                      </a>
+                    </span>
+                  ) : (
+                    <span>
+                      <a className="underline font-medium hover:text-flower-blue" href={`/profile/${profileSlug}`}>
+                        {item.userName}
+                      </a>{' '}
+                      {t("dashboard.helpedYou")}{' '}
+                      <a className="underline font-medium hover:text-flower-blue" href={`/communities/${communityLink}`}>
+                        {item.subject}
+                      </a>
+                    </span>
+                  )}
                 </div>
-                <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-[#1d72ff] text-white text-[11px] font-bold px-1.5 py-0.2 rounded-full shadow">
-                  +{item.points}
+
+                {/* Avatar + Point Badge */}
+                <div className="relative shrink-0">
+                  <div className="w-12 h-12 rounded-full border border-white/20 overflow-hidden">
+                    <img src={item.userImage} alt={item.userName} className="w-full h-full object-cover" />
+                  </div>
+                  <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-[#1d72ff] text-white text-[11px] font-bold px-1.5 py-0.2 rounded-full shadow">
+                    +{item.points}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
