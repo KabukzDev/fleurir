@@ -33,14 +33,22 @@ export default async function RootLayout({children,}: {children: React.ReactNode
             {children}
             <footer className="w-full py-6 text-center text-xs text-neutral-500">
               <p>
-                {dictionary.footer.builtBy} ·{" "}
+                {dictionary.footer.builtBy} · {" "}
                 <a
                   href="https://github.com/KabukzDev/fleurir"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="hover:text-neutral-300 hover:underline"
                 >
-                  {dictionary.footer.sourceCode}
+                  {dictionary.footer.sourceCode} · {" "}
+                </a>
+                <a
+                  href="mailto:frederickcastro456@icloud.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-neutral-300 hover:underline"
+                >
+                  {dictionary.footer.supportLabel}
                 </a>
               </p>
             </footer>

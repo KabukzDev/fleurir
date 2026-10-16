@@ -44,7 +44,8 @@
   },
   "footer": {
     "builtBy": "© 2026 Fleurir · Built by CBMP students",
-    "sourceCode": "Source code"
+    "sourceCode": "Source code",
+    "supportLabel": "Contact us"
   },
   "dashboard": {
     "greeting": "What's up,",
