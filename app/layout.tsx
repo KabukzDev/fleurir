@@ -40,8 +40,9 @@ export default async function RootLayout({children,}: {children: React.ReactNode
                   rel="noopener noreferrer"
                   className="hover:text-neutral-300 hover:underline"
                 >
-                  {dictionary.footer.sourceCode} · {" "}
+                  {dictionary.footer.sourceCode}
                 </a>
+                · {" "}
                 <a
                   href="mailto:frederickcastro456@icloud.com"
                   target="_blank"
