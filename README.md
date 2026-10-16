@@ -1,17 +1,14 @@
-# Fleurir
+# [Fleurir](https://fleurir.vercel.app/)
 
-> **"Learn Better. Grow Faster. Fleurir."**  
-> *Una plataforma educativa diseñada para transformar la dinámica tradicional del aula a través del aprendizaje colaborativo estructurado, la tutoría entre pares y el fortalecimiento de competencias evaluadas en la prueba de estado Saber 11.*
+<img width="3840" height="2400" alt="Screen Shot 2026-10-15 at 21 17 34" src="https://github.com/user-attachments/assets/427f148d-62fa-4f94-84da-d81b58cf22c4" />
 
----
+Una plataforma educativa diseñada para transformar la dinámica tradicional del aula a través del aprendizaje colaborativo estructurado, la tutoría entre pares y el fortalecimiento de competencias evaluadas en la prueba de estado Saber 11.
 
 ## ¿Que es Fleurir?
 
 **Fleurir** (del francés *florecer*) surge como una propuesta pedagógica y tecnológica desarrollada como proyecto de grado. Su propósito central es superar la memorización mecánica, el "oficio de alumno" y el individualismo en el aula mediante un entorno mediado por computadora (**CSCL — Computer-Supported Collaborative Learning**).
 
 A diferencia de los foros asincrónicos pasivos o la división instrumental de tareas que degenera en parasitismo social, Fleurir estructura una interdependencia positiva rigurosa y fomenta el beneficio cognitivo bidireccional: quien enseña reorganiza y profundiza sus esquemas mentales dentro de la Zona de Desarrollo Próximo (ZDP), mientras quien recibe apoyo encuentra un espacio seguro, empático y libre de competencia hostil fundamentado en la Pedagogía del Amor de Paulo Freire.
-
----
 
 ## Características Principales
 
