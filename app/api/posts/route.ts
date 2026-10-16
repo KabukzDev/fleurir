@@ -3,6 +3,64 @@ import { getUser } from "@/lib/auth";
 import { createSupabaseServerClient, createSupabaseAdminClient } from "@/lib/supabase/server";
 import { addPointsToUser } from "@/lib/points";
 
+import { buildReplyTree } from "@/lib/demo-social";
+
+export async function GET(request: Request) {
+  const db = createSupabaseAdminClient() || (await createSupabaseServerClient());
+  if (!db) {
+    return NextResponse.json({ error: "Database client unavailable." }, { status: 500 });
+  }
+
+  const { searchParams } = new URL(request.url);
+  const postId = searchParams.get("id");
+
+  if (!postId) {
+    return NextResponse.json({ error: "Post ID required" }, { status: 400 });
+  }
+
+  const { data, error } = await db
+    .from("posts")
+    .select("*, comments(*, comment_replies(*))")
+    .eq("id", postId)
+    .maybeSingle();
+
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 400 });
+  }
+
+  if (!data) {
+    return NextResponse.json({ error: "Post not found" }, { status: 404 });
+  }
+
+  const comments = (data.comments || []).map((comment: any) => ({
+    id: comment.id,
+    author: comment.author_username,
+    content: comment.content,
+    attachmentUrl: comment.attachment_url,
+    upvotes: comment.upvotes,
+    accepted: comment.accepted,
+    createdAt: comment.created_at,
+    replies: buildReplyTree(comment.comment_replies || []),
+  }));
+
+  return NextResponse.json({
+    post: {
+      id: data.id,
+      title: data.title,
+      type: data.type,
+      content: data.content,
+      author: data.author_username,
+      communitySlug: data.community_slug,
+      upvotes: data.upvotes,
+      replies: comments.length,
+      solved: data.solved,
+      tags: data.tags || [],
+      comments,
+      createdAt: data.created_at,
+    },
+  });
+}
+
 export async function POST(request: Request) {
   const user = await getUser();
   const db = createSupabaseAdminClient() || (await createSupabaseServerClient());

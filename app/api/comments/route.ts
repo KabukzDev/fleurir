@@ -3,6 +3,8 @@ import { getUser } from "@/lib/auth";
 import { createSupabaseServerClient, createSupabaseAdminClient } from "@/lib/supabase/server";
 import { addPointsToUser } from "@/lib/points";
 
+import { buildReplyTree } from "@/lib/demo-social";
+
 export async function GET(request: Request) {
   const db = createSupabaseAdminClient() || (await createSupabaseServerClient());
   if (!db) {
@@ -34,11 +36,7 @@ export async function GET(request: Request) {
     upvotes: c.upvotes,
     accepted: c.accepted,
     createdAt: c.created_at,
-    replies: (c.comment_replies || []).map((r: { id: string; author_username: string; content: string }) => ({
-      id: r.id,
-      author: r.author_username,
-      content: r.content,
-    })),
+    replies: buildReplyTree(c.comment_replies || []),
   }));
 
   return NextResponse.json({ comments });
@@ -103,6 +101,90 @@ export async function POST(request: Request) {
         { error: "File attachment is too large for JSON payload. Please attach directly." },
         { status: 413 }
       );
+    }
+
+    const commentId = body.commentId ? String(body.commentId).trim() : null;
+    if (commentId) {
+      const content = String(body.content || "").trim();
+      const parentReplyId = body.parentReplyId ? String(body.parentReplyId).trim() : null;
+
+      if (!content) {
+        return NextResponse.json({ error: "Reply content is required." }, { status: 400 });
+      }
+
+      const { data: parentComment, error: commentFetchErr } = await db
+        .from("comments")
+        .select("id")
+        .eq("id", commentId)
+        .maybeSingle();
+
+      if (commentFetchErr || !parentComment) {
+        return NextResponse.json({ error: "Comment not found." }, { status: 404 });
+      }
+
+      let replyData: any = null;
+      let replyError: any = null;
+
+      if (parentReplyId) {
+        const res = await db
+          .from("comment_replies")
+          .insert({
+            comment_id: commentId,
+            parent_reply_id: parentReplyId,
+            author_username: user.id,
+            content,
+          })
+          .select("id, comment_id, parent_reply_id, author_username, content, created_at")
+          .single();
+
+        if (res.error && res.error.message?.includes("parent_reply_id")) {
+          const fallbackRes = await db
+            .from("comment_replies")
+            .insert({
+              comment_id: commentId,
+              author_username: user.id,
+              content,
+            })
+            .select("id, comment_id, author_username, content, created_at")
+            .single();
+          replyData = fallbackRes.data;
+          replyError = fallbackRes.error;
+        } else {
+          replyData = res.data;
+          replyError = res.error;
+        }
+      } else {
+        const res = await db
+          .from("comment_replies")
+          .insert({
+            comment_id: commentId,
+            author_username: user.id,
+            content,
+          })
+          .select("id, comment_id, author_username, content, created_at")
+          .single();
+        replyData = res.data;
+        replyError = res.error;
+      }
+
+      if (replyError) {
+        return NextResponse.json({ error: replyError.message }, { status: 400 });
+      }
+
+      // Award +1 point to author for posting a reply
+      await addPointsToUser(user.id, 1);
+
+      return NextResponse.json({
+        reply: {
+          id: String(replyData.id),
+          author: replyData.author_username,
+          content: replyData.content,
+          commentId: String(replyData.comment_id),
+          parentReplyId: replyData.parent_reply_id ? String(replyData.parent_reply_id) : null,
+          createdAt: replyData.created_at,
+          replies: [],
+        },
+      });
     }
 
     postId = String(body.postId || "").trim();
@@ -179,6 +261,37 @@ export async function DELETE(request: Request) {
 
   const { searchParams } = new URL(request.url);
   const commentId = searchParams.get("id");
+  const replyId = searchParams.get("replyId");
+
+  if (replyId) {
+    const { data: reply } = await db
+      .from("comment_replies")
+      .select("author_username")
+      .eq("id", replyId)
+      .maybeSingle();
+
+    if (!reply) {
+      return NextResponse.json({ error: "Reply not found" }, { status: 404 });
+    }
+
+    const isAuthor = reply.author_username === user.id;
+    const isAdmin = user.role === "administrator";
+
+    if (!isAuthor && !isAdmin) {
+      return NextResponse.json(
+        { error: "Permission denied. Only author or administrator can delete this reply." },
+        { status: 403 }
+      );
+    }
+
+    const { error } = await db.from("comment_replies").delete().eq("id", replyId);
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+
+    return NextResponse.json({ success: true });
+  }
 
   if (!commentId) {
     return NextResponse.json({ error: "Comment ID required" }, { status: 400 });

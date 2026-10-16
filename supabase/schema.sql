@@ -58,10 +58,14 @@ create table if not exists public.comment_replies (
   id uuid primary key default gen_random_uuid(),
   legacy_id text,
   comment_id uuid not null references public.comments(id) on delete cascade,
+  parent_reply_id uuid references public.comment_replies(id) on delete cascade,
   author_username text not null references public.profiles(username),
   content text not null,
   created_at timestamptz not null default now()
 );
+
+create index if not exists idx_comment_replies_parent on public.comment_replies(parent_reply_id);
+create index if not exists idx_comment_replies_comment on public.comment_replies(comment_id);
 
 create table if not exists public.leagues (
   id text primary key,
@@ -205,6 +209,12 @@ create policy "Authenticated users can create replies"
 on public.comment_replies for insert
 to authenticated
 with check (auth.uid() = (select auth_user_id from public.profiles where username = author_username));
+
+drop policy if exists "Users can delete their own replies" on public.comment_replies;
+create policy "Users can delete their own replies"
+on public.comment_replies for delete
+to authenticated
+using (auth.uid() = (select auth_user_id from public.profiles where username = author_username));
 
 drop policy if exists "Leagues are public" on public.leagues;
 create policy "Leagues are public"

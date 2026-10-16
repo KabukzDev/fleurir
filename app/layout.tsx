@@ -28,15 +28,20 @@ export default async function RootLayout({children,}: {children: React.ReactNode
       </head>
       <body className={`${inter.className} antialiased`}>
         <LanguageProvider initialLocale={locale} initialDictionary={dictionary}>
-          <div className="min-h-screen bg-mist-950">
+          <div className="min-h-screen bg-(--bg-base) text-(--text-primary) transition-colors duration-300">
             <Navbar user={user} />
             {children}
-            <footer>
-              <p className="text-white/50 text-xs text-center py-6">
-                {dictionary.footer.betaNotice}{" "}
-                <a href="mailto:frederickc2104@gmail.com?subject=Fleurir%20Feedback" className="underline">
-                  {dictionary.footer.developerEmail}
-                </a>.
+            <footer className="w-full py-6 text-center text-xs text-neutral-500">
+              <p>
+                {dictionary.footer.builtBy} ·{" "}
+                <a
+                  href="https://github.com/KabukzDev/fleurir"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-neutral-300 hover:underline"
+                >
+                  {dictionary.footer.sourceCode}
+                </a>
               </p>
             </footer>
           </div>

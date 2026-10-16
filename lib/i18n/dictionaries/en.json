@@ -33,7 +33,6 @@
     "discover": "Discover",
     "dashboard": "Dashboard",
     "leagues": "Leagues",
-    "support": "Support",
     "login": "Login",
     "notifications": "Notifications",
     "noNotifications": "No pending notifications.",
@@ -44,8 +43,8 @@
     "logout": "Log Out"
   },
   "footer": {
-    "betaNotice": "This is a beta release of Fleurir. Please report any bugs or issues through the",
-    "developerEmail": "developer's email"
+    "builtBy": "© 2026 Fleurir · Built by CBMP students",
+    "sourceCode": "Source code"
   },
   "dashboard": {
     "greeting": "What's up,",
@@ -151,7 +150,13 @@
     "deletePost": "Delete Post",
     "deleteConfirm": "Are you sure you want to delete this post?",
     "newCommentsNotice": "New comments have been added.",
-    "refreshComments": "Refresh to view"
+    "refreshComments": "Refresh to view",
+    "reply": "Reply",
+    "replyingTo": "Replying to",
+    "cancel": "Cancel",
+    "sendReply": "Send Reply",
+    "deleteReply": "Delete",
+    "deleteReplyConfirm": "Are you sure you want to delete this reply?"
   },
   "friends": {
     "title": "Friends",
@@ -203,15 +208,6 @@
     "updatePassword": "Update Password",
     "passwordUpdated": "Password updated successfully.",
     "passwordMismatch": "Passwords do not match."
-  },
-  "support": {
-    "title": "Support Center",
-    "subtitle": "Find guides, troubleshoot common questions, or get in touch with our team.",
-    "searchSupport": "Search help articles...",
-    "popularTopics": "Popular Topics",
-    "contactTitle": "Still need help?",
-    "contactSubtitle": "Our support team is always ready to assist you.",
-    "contactButton": "Contact Support"
   },
   "auth": {
     "loginTitle": "Welcome Back",

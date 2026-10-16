@@ -35,14 +35,20 @@ export type Reply = {
   id: string;
   author: string;
   content: string;
+  commentId?: string;
+  parentReplyId?: string | null;
+  createdAt?: string;
+  replies?: Reply[];
 };
 
 export type Comment = {
   id: string;
   author: string;
   content: string;
+  attachmentUrl?: string;
   upvotes: number;
   accepted?: boolean;
+  createdAt?: string;
   replies: Reply[];
 };
 
@@ -143,8 +149,11 @@ type DbCommunity = {
 
 type DbReply = {
   id: string;
+  comment_id?: string;
+  parent_reply_id?: string | null;
   author_username: string;
   content: string;
+  created_at?: string;
 };
 
 type DbComment = {
@@ -154,6 +163,7 @@ type DbComment = {
   attachment_url?: string;
   upvotes: number;
   accepted: boolean;
+  created_at?: string;
   comment_replies?: DbReply[];
 };
 
@@ -205,20 +215,64 @@ function normalizeProfile(profile: DbProfile): UserProfile {
   };
 }
 
+export function flattenReplies(replies: Reply[] = []): Reply[] {
+  const result: Reply[] = [];
+  for (const r of replies) {
+    result.push(r);
+    if (r.replies && r.replies.length > 0) {
+      result.push(...flattenReplies(r.replies));
+    }
+  }
+  return result;
+}
+
+export function buildReplyTree(rawReplies: any[] = []): Reply[] {
+  const replyMap = new Map<string, Reply>();
+  const topLevel: Reply[] = [];
+
+  for (const item of rawReplies) {
+    const id = String(item.id);
+    const parentId = item.parent_reply_id || item.parentReplyId;
+    replyMap.set(id, {
+      id,
+      author: item.author || item.author_username,
+      content: item.content,
+      commentId: item.comment_id || item.commentId ? String(item.comment_id || item.commentId) : undefined,
+      parentReplyId: parentId ? String(parentId) : null,
+      createdAt: item.created_at || item.createdAt,
+      replies: [],
+    });
+  }
+
+  for (const item of rawReplies) {
+    const id = String(item.id);
+    const node = replyMap.get(id)!;
+    const parentId = item.parent_reply_id || item.parentReplyId ? String(item.parent_reply_id || item.parentReplyId) : null;
+    if (parentId && replyMap.has(parentId)) {
+      replyMap.get(parentId)!.replies!.push(node);
+    } else {
+      topLevel.push(node);
+    }
+  }
+
+  return topLevel;
+}
+
 function normalizePost(post: DbPost): ForumPost {
-  const comments = (post.comments || []).map((comment) => ({
-    id: comment.id,
-    author: comment.author_username,
-    content: comment.content,
-    attachmentUrl: comment.attachment_url,
-    upvotes: comment.upvotes,
-    accepted: comment.accepted,
-    replies: (comment.comment_replies || []).map((reply) => ({
-      id: reply.id,
-      author: reply.author_username,
-      content: reply.content,
-    })),
-  }));
+  const comments = (post.comments || []).map((comment) => {
+    const replies = buildReplyTree(comment.comment_replies || []);
+
+    return {
+      id: comment.id,
+      author: comment.author_username,
+      content: comment.content,
+      attachmentUrl: comment.attachment_url,
+      upvotes: comment.upvotes,
+      accepted: comment.accepted,
+      createdAt: comment.created_at,
+      replies,
+    };
+  });
 
   return {
     id: post.id,
@@ -503,7 +557,7 @@ export async function getUserContributionStats(
           );
         }
 
-        for (const reply of comment.replies) {
+        for (const reply of flattenReplies(comment.replies)) {
           if (reply.author === username) {
             userReplies += 1;
             points += 2;
@@ -550,7 +604,7 @@ export async function getUserCollaborations(
     for (const post of posts) {
       const comment = post.comments.find((item) => item.author === username);
       const reply = post.comments.find((item) =>
-        item.replies.some((nestedReply) => nestedReply.author === username)
+        flattenReplies(item.replies).some((nestedReply) => nestedReply.author === username)
       );
 
       let action: Collaboration["action"] | null = null;
@@ -574,7 +628,7 @@ export async function getUserCollaborations(
       collaboratorUsernames.add(post.author);
       for (const postComment of post.comments) {
         collaboratorUsernames.add(postComment.author);
-        for (const nestedReply of postComment.replies) {
+        for (const nestedReply of flattenReplies(postComment.replies)) {
           collaboratorUsernames.add(nestedReply.author);
         }
       }

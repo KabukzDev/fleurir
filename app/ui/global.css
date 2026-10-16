@@ -11,9 +11,49 @@
   font-style: normal;
 }
 
+:root {
+  /* Brand */
+  --primary: #0463CA;
+  --primary-hover: #257BE3;
+  --primary-active: #034B9A;
+  --accent: #38BDF8;
+
+  /* Surfaces & Backgrounds */
+  --bg-base: #05070a;
+  --bg-surface: #0E141E;
+  --bg-elevated: #17202F;
+  --border-subtle: #1E2A3C;
+
+  /* Typography */
+  --text-primary: #F1F5F9;
+  --text-muted: #94A3B8;
+
+  /* States */
+  --success: #10B981;
+  --warning: #F59E0B;
+  --danger: #EF4444;
+}
+
 @theme {
   --font-heading: 'ClashDisplay-Variable', sans-serif;
   --color-flower-blue: #0463CA;
+
+  --color-brand-primary: var(--primary);
+  --color-brand-primary-hover: var(--primary-hover);
+  --color-brand-primary-active: var(--primary-active);
+  --color-brand-accent: var(--accent);
+
+  --color-bg-base: var(--bg-base);
+  --color-bg-surface: var(--bg-surface);
+  --color-bg-elevated: var(--bg-elevated);
+  --color-border-subtle: var(--border-subtle);
+
+  --color-text-primary: var(--text-primary);
+  --color-text-muted: var(--text-muted);
+
+  --color-state-success: var(--success);
+  --color-state-warning: var(--warning);
+  --color-state-danger: var(--danger);
 }
 
 input[type='number'] {

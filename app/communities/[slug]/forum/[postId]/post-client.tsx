@@ -10,6 +10,10 @@ type Reply = {
   id: string | number;
   author: string;
   content: string;
+  commentId?: string | number;
+  parentReplyId?: string | number | null;
+  createdAt?: string;
+  replies?: Reply[];
 };
 
 type Comment = {
@@ -19,6 +23,7 @@ type Comment = {
   attachmentUrl?: string;
   upvotes: number;
   accepted?: boolean;
+  createdAt?: string;
   replies?: Reply[];
 };
 
@@ -55,6 +60,13 @@ export default function PostClient({
   const [hasNewCommentsNotice, setHasNewCommentsNotice] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [replyingTarget, setReplyingTarget] = useState<{
+    commentId: string | number;
+    replyId?: string | number;
+    author: string;
+  } | null>(null);
+  const [replyText, setReplyText] = useState("");
+  const [isSubmittingReply, setIsSubmittingReply] = useState(false);
 
   const canDeletePost = currentUser && (currentUser.username === post?.author || currentUser.role === "administrator");
   const canSolvePost = currentUser && (currentUser.username === post?.author || currentUser.role === "mentor" || currentUser.role === "administrator");
@@ -192,11 +204,127 @@ export default function PostClient({
           setPost(data.post);
           setCommentsList(data.post.comments || []);
         }
+      } else {
+        const fallbackRes = await fetch(`/api/comments?postId=${postId}`);
+        if (fallbackRes.ok) {
+          const fallbackData = await fallbackRes.json();
+          if (fallbackData.comments) {
+            setCommentsList(fallbackData.comments);
+          }
+        }
       }
     } catch {
       // Ignore
     } finally {
       setHasNewCommentsNotice(false);
+    }
+  };
+
+  const handleSubmitReply = async (commentId: string | number, parentReplyId?: string | number) => {
+    if (!replyText.trim()) return;
+    setIsSubmittingReply(true);
+    setError("");
+
+    try {
+      const res = await fetch("/api/comments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          commentId,
+          parentReplyId: parentReplyId || undefined,
+          content: replyText.trim(),
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || t("common.errorGeneric"));
+        setIsSubmittingReply(false);
+        return;
+      }
+
+      setReplyText("");
+      setReplyingTarget(null);
+
+      const createdReply: Reply = {
+        id: data.reply.id,
+        author: data.reply.author,
+        content: data.reply.content,
+        commentId: data.reply.commentId,
+        parentReplyId: data.reply.parentReplyId,
+        createdAt: data.reply.createdAt,
+        replies: [],
+      };
+
+      const addReplyToTree = (replies: Reply[] = []): Reply[] => {
+        if (!parentReplyId) {
+          return [...replies, createdReply];
+        }
+        return replies.map((r) => {
+          if (String(r.id) === String(parentReplyId)) {
+            return { ...r, replies: [...(r.replies || []), createdReply] };
+          }
+          if (r.replies && r.replies.length > 0) {
+            return { ...r, replies: addReplyToTree(r.replies) };
+          }
+          return r;
+        });
+      };
+
+      setCommentsList((prev) =>
+        prev.map((c) => {
+          if (String(c.id) === String(commentId)) {
+            return {
+              ...c,
+              replies: addReplyToTree(c.replies || []),
+            };
+          }
+          return c;
+        })
+      );
+    } catch {
+      setError(t("common.errorGeneric"));
+    } finally {
+      setIsSubmittingReply(false);
+    }
+  };
+
+  const handleDeleteReply = async (commentId: string | number, replyId: string | number) => {
+    if (!confirm(t("forum.deleteReplyConfirm") || "Are you sure you want to delete this reply?")) return;
+    setError("");
+
+    try {
+      const res = await fetch(`/api/comments?replyId=${replyId}`, { method: "DELETE" });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || "Could not delete reply.");
+        return;
+      }
+
+      const removeReplyFromTree = (replies: Reply[] = []): Reply[] => {
+        return replies
+          .filter((r) => String(r.id) !== String(replyId))
+          .map((r) => ({
+            ...r,
+            replies: r.replies ? removeReplyFromTree(r.replies) : [],
+          }));
+      };
+
+      setCommentsList((prev) =>
+        prev.map((c) => {
+          if (String(c.id) === String(commentId)) {
+            return {
+              ...c,
+              replies: removeReplyFromTree(c.replies || []),
+            };
+          }
+          return c;
+        })
+      );
+    } catch {
+      setError(t("common.errorGeneric"));
     }
   };
 
@@ -574,6 +702,24 @@ export default function PostClient({
                       <span>↑</span>
                     </button>
 
+                    {currentUser && (
+                      <button
+                        onClick={() => {
+                          if (replyingTarget?.commentId === comment.id && !replyingTarget?.replyId) {
+                            setReplyingTarget(null);
+                            setReplyText("");
+                          } else {
+                            setReplyingTarget({ commentId: comment.id, author: comment.author });
+                            setReplyText("");
+                          }
+                        }}
+                        className="px-2.5 py-1 bg-white/10 hover:bg-white/20 text-white/80 hover:text-white rounded-lg text-sm transition flex items-center gap-1 cursor-pointer"
+                      >
+                        <span className="icon icon-rounded text-sm">reply</span>
+                        <span>{t("forum.reply")}</span>
+                      </button>
+                    )}
+
                     {canAcceptComment && (
                       <button
                         onClick={() => handleToggleAcceptComment(comment.id, comment.accepted)}
@@ -656,15 +802,63 @@ export default function PostClient({
                   </div>
                 )}
 
+                {/* Inline Reply Form under top-level Comment */}
+                {replyingTarget?.commentId === comment.id && !replyingTarget?.replyId && (
+                  <div className="mt-3 p-3 bg-white/5 rounded-xl border border-white/10 space-y-2">
+                    <p className="text-xs text-white/50 font-medium">
+                      {t("forum.replyingTo")} <span className="text-flower-blue">@{comment.author}</span>
+                    </p>
+                    <textarea
+                      value={replyText}
+                      onChange={(e) => setReplyText(e.target.value)}
+                      placeholder={locale === "es" ? "Escribe tu respuesta..." : "Write your reply..."}
+                      rows={2}
+                      className="w-full bg-black/40 text-sm text-white rounded-lg p-2.5 outline-none resize-none placeholder:text-white/20 border border-white/10 focus:border-flower-blue/50"
+                      autoFocus
+                    />
+                    <div className="flex justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setReplyingTarget(null);
+                          setReplyText("");
+                        }}
+                        className="px-3 py-1 rounded-lg text-xs text-white/60 hover:text-white transition cursor-pointer"
+                      >
+                        {t("forum.cancel")}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={isSubmittingReply || !replyText.trim()}
+                        onClick={() => handleSubmitReply(comment.id)}
+                        className="px-3.5 py-1 bg-flower-blue hover:bg-flower-blue/90 disabled:opacity-50 text-white rounded-lg text-xs font-medium transition cursor-pointer"
+                      >
+                        {isSubmittingReply ? (locale === "es" ? "Enviando..." : "Sending...") : t("forum.sendReply")}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Recursive Threaded Replies */}
                 {comment.replies && comment.replies.length > 0 && (
-                  <div className="mt-4 ml-6 pl-4 border-l border-white/10 space-y-3">
+                  <div className="mt-4 pt-3 border-t border-white/10 space-y-3">
                     {comment.replies.map((nestedReply) => (
-                      <div key={nestedReply.id}>
-                        <p className="text-sm text-white/50">
-                          @{nestedReply.author}
-                        </p>
-                        <p className="text-white/80">{nestedReply.content}</p>
-                      </div>
+                      <ThreadedReplyItem
+                        key={nestedReply.id}
+                        reply={nestedReply}
+                        commentId={comment.id}
+                        currentUser={currentUser}
+                        locale={locale}
+                        t={t}
+                        replyingTarget={replyingTarget}
+                        setReplyingTarget={setReplyingTarget}
+                        replyText={replyText}
+                        setReplyText={setReplyText}
+                        isSubmittingReply={isSubmittingReply}
+                        onSubmitReply={handleSubmitReply}
+                        onDeleteReply={handleDeleteReply}
+                        depth={0}
+                      />
                     ))}
                   </div>
                 )}
@@ -674,5 +868,157 @@ export default function PostClient({
         </section>
       </div>
     </main>
+  );
+}
+
+type ThreadedReplyItemProps = {
+  reply: Reply;
+  commentId: string | number;
+  currentUser?: CurrentUser;
+  locale: string;
+  t: (key: string) => string;
+  replyingTarget: { commentId: string | number; replyId?: string | number; author: string } | null;
+  setReplyingTarget: (target: { commentId: string | number; replyId?: string | number; author: string } | null) => void;
+  replyText: string;
+  setReplyText: (text: string) => void;
+  isSubmittingReply: boolean;
+  onSubmitReply: (commentId: string | number, parentReplyId?: string | number) => void;
+  onDeleteReply: (commentId: string | number, replyId: string | number) => void;
+  depth?: number;
+};
+
+function ThreadedReplyItem({
+  reply,
+  commentId,
+  currentUser,
+  locale,
+  t,
+  replyingTarget,
+  setReplyingTarget,
+  replyText,
+  setReplyText,
+  isSubmittingReply,
+  onSubmitReply,
+  onDeleteReply,
+  depth = 0,
+}: ThreadedReplyItemProps) {
+  const isReplyingToThis =
+    String(replyingTarget?.commentId) === String(commentId) &&
+    String(replyingTarget?.replyId) === String(reply.id);
+
+  const canDelete =
+    currentUser &&
+    (currentUser.username === reply.author || currentUser.role === "administrator");
+
+  return (
+    <div
+      className={`relative ${
+        depth > 0
+          ? "mt-3 ml-2 sm:ml-4 pl-3 sm:pl-4 border-l-2 border-white/10 hover:border-flower-blue/50 transition-colors"
+          : "mt-3"
+      }`}
+    >
+      <div className="bg-white/5 rounded-xl p-3 border border-white/5 hover:border-white/10 transition">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Link
+              href={`/profile/${reply.author}`}
+              className="text-xs font-semibold text-white/90 hover:text-flower-blue transition"
+            >
+              @{reply.author}
+            </Link>
+          </div>
+          {canDelete && (
+            <button
+              onClick={() => onDeleteReply(commentId, reply.id)}
+              className="text-xs text-red-400 hover:text-red-300 opacity-70 hover:opacity-100 transition cursor-pointer"
+            >
+              {t("forum.deleteReply")}
+            </button>
+          )}
+        </div>
+
+        <p className="mt-1.5 text-sm text-white/85 leading-relaxed">{reply.content}</p>
+
+        <div className="mt-2 flex items-center gap-3">
+          {currentUser && (
+            <button
+              onClick={() => {
+                if (isReplyingToThis) {
+                  setReplyingTarget(null);
+                  setReplyText("");
+                } else {
+                  setReplyingTarget({ commentId, replyId: reply.id, author: reply.author });
+                  setReplyText("");
+                }
+              }}
+              className="text-xs font-medium text-white/50 hover:text-flower-blue flex items-center gap-1 transition cursor-pointer"
+            >
+              <span className="icon icon-rounded text-sm">reply</span>
+              <span>{t("forum.reply")}</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {isReplyingToThis && (
+        <div className="mt-2 ml-2 sm:ml-4 p-3 bg-white/5 rounded-xl border border-white/10 space-y-2">
+          <p className="text-xs text-white/50 font-medium">
+            {t("forum.replyingTo")} <span className="text-flower-blue">@{reply.author}</span>
+          </p>
+          <textarea
+            value={replyText}
+            onChange={(e) => setReplyText(e.target.value)}
+            placeholder={locale === "es" ? "Escribe tu respuesta..." : "Write your reply..."}
+            rows={2}
+            className="w-full bg-black/40 text-sm text-white rounded-lg p-2.5 outline-none resize-none placeholder:text-white/20 border border-white/10 focus:border-flower-blue/50"
+            autoFocus
+          />
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setReplyingTarget(null);
+                setReplyText("");
+              }}
+              className="px-3 py-1 rounded-lg text-xs text-white/60 hover:text-white transition cursor-pointer"
+            >
+              {t("forum.cancel")}
+            </button>
+            <button
+              type="button"
+              disabled={isSubmittingReply || !replyText.trim()}
+              onClick={() => onSubmitReply(commentId, reply.id)}
+              className="px-3.5 py-1 bg-flower-blue hover:bg-flower-blue/90 disabled:opacity-50 text-white rounded-lg text-xs font-medium transition cursor-pointer"
+            >
+              {isSubmittingReply ? (locale === "es" ? "Enviando..." : "Sending...") : t("forum.sendReply")}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {reply.replies && reply.replies.length > 0 && (
+        <div className="space-y-2">
+          {reply.replies.map((childReply) => (
+            <ThreadedReplyItem
+              key={childReply.id}
+              reply={childReply}
+              commentId={commentId}
+              currentUser={currentUser}
+              locale={locale}
+              t={t}
+              replyingTarget={replyingTarget}
+              setReplyingTarget={setReplyingTarget}
+              replyText={replyText}
+              setReplyText={setReplyText}
+              isSubmittingReply={isSubmittingReply}
+              onSubmitReply={onSubmitReply}
+              onDeleteReply={onDeleteReply}
+              depth={depth + 1}
+            />
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

@@ -17,21 +17,20 @@ export default function Navbar({ user }: NavbarProps) {
   const { t } = useTranslation();
 
   return (
-    <nav className="relative z-50">
-      <div className="w-full flex items-center justify-between px-6 py-3 backdrop-blur-xl bg-mist-950">
-        <div className="text-pri-black font-semibold text-lg tracking-tight">
+    <nav className="relative z-50 flex justify-center px-4">
+      <div className="w-full flex items-center justify-between px-6 py-3 bg-(--bg-base) transition-all duration-300">
+        <div className="font-semibold text-lg tracking-tight">
           <a href="/">
-            <img className="h-9" src="/fleurir/logo_x1.png" alt="Fleurir Logo"/>
+            <img className="h-8 w-auto" src="/fleurir/logo_x1.png" alt="Fleurir Logo"/>
           </a>
         </div>
 
-        <div className="pr-2 flex items-center gap-6 font-normal text-base">
+        <div className="hidden md:flex pr-2 items-center gap-6 font-normal text-base text-(--text-primary)">
           {user ? (
             <>
-              <a className="text-white hover:text-flower-blue transition" href="/discover">{t("navbar.discover")}</a>
-              <a className="text-white hover:text-flower-blue transition" href="/dashboard">{t("navbar.dashboard")}</a>
-              <a className="text-white hover:text-flower-blue transition" href="/leagues">{t("navbar.leagues")}</a>
-              <a className="text-white hover:text-flower-blue transition" href="/support">{t("navbar.support")}</a>
+              <a className="hover:text-flower-blue transition" href="/discover">{t("navbar.discover")}</a>
+              <a className="hover:text-flower-blue transition" href="/dashboard">{t("navbar.dashboard")}</a>
+              <a className="hover:text-flower-blue transition" href="/leagues">{t("navbar.leagues")}</a>
               <NavbarUserMenu user={user} />
             </>
           ) : (

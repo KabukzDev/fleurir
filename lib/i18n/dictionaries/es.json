@@ -33,7 +33,6 @@
     "discover": "Descubrir",
     "dashboard": "Panel",
     "leagues": "Ligas",
-    "support": "Soporte",
     "login": "Iniciar Sesión",
     "notifications": "Notificaciones",
     "noNotifications": "No tienes notificaciones pendientes.",
@@ -44,8 +43,8 @@
     "logout": "Cerrar Sesión"
   },
   "footer": {
-    "betaNotice": "Esta es una versión beta de Fleurir. Por favor reporta cualquier problema al",
-    "developerEmail": "correo del desarrollador"
+    "builtBy": "© 2026 Fleurir · Creado por estudiantes de CBMP",
+    "sourceCode": "Código fuente"
   },
   "dashboard": {
     "greeting": "Cómo estás,",
@@ -151,7 +150,13 @@
     "deletePost": "Eliminar Publicación",
     "deleteConfirm": "¿Estás seguro de que deseas eliminar esta publicación?",
     "newCommentsNotice": "Se han agregado nuevos comentarios.",
-    "refreshComments": "Actualizar para ver"
+    "refreshComments": "Actualizar para ver",
+    "reply": "Responder",
+    "replyingTo": "Respondiendo a",
+    "cancel": "Cancelar",
+    "sendReply": "Publicar Respuesta",
+    "deleteReply": "Eliminar",
+    "deleteReplyConfirm": "¿Estás seguro de que deseas eliminar esta respuesta?"
   },
   "friends": {
     "title": "Amigos",
@@ -203,15 +208,6 @@
     "updatePassword": "Actualizar Contraseña",
     "passwordUpdated": "Contraseña actualizada exitosamente.",
     "passwordMismatch": "Las contraseñas no coinciden."
-  },
-  "support": {
-    "title": "Centro de Ayuda",
-    "subtitle": "Encuentra guías, resuelve dudas frecuentes o ponte en contacto con nuestro equipo.",
-    "searchSupport": "Buscar artículos de ayuda...",
-    "popularTopics": "Temas Populares",
-    "contactTitle": "¿Aún necesitas ayuda?",
-    "contactSubtitle": "Nuestro equipo de soporte siempre está listo para asistirte.",
-    "contactButton": "Contactar a Soporte"
   },
   "auth": {
     "loginTitle": "Bienvenido de Nuevo",
